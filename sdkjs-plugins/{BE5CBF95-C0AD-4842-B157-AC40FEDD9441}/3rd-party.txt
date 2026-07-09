@@ -1,0 +1,16 @@
+Mendeley ONLYOFFICE integration plugin uses code from the following 3rd party projects:
+
+1. citeproc-js - A JavaScript implementation of the Citation Style Language (CSL) citation formatting language. (https://github.com/Juris-M/citeproc-js)
+
+License:        CPAL-1.0 OR AGPL-3.0-or-later
+License File:   citeproc-js.license
+
+2. core-js - Modular standard library for JavaScript. Includes polyfills for ECMAScript up to 2024. (https://github.com/nicolo-ribaudo/core-js-contrib)
+
+License:        MIT
+License File:   core-js.license
+
+3. mendeley-javascript-sdk - The SDK provides a convenient library for accessing the Mendeley API with client-side and server-side JavaScript (https://github.com/Mendeley/mendeley-javascript-sdk)
+
+License:        Apache-2.0
+License File:   mendeley-sdk.license

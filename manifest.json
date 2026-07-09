@@ -1,0 +1,51 @@
+{
+  "name": "Statiq Office",
+  "short_name": "Statiq Office",
+  "description": "Local-first office suite with WASM conversion and offline editing",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui", "browser"],
+  "background_color": "#446995",
+  "theme_color": "#446995",
+  "orientation": "any",
+  "categories": ["productivity", "utilities"],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+        "application/pdf": [".pdf"],
+        "application/msword": [".doc"],
+        "application/vnd.ms-excel": [".xls"],
+        "application/vnd.ms-powerpoint": [".ppt"]
+      },
+      "launch_type": "single-client"
+    }
+  ]
+}
