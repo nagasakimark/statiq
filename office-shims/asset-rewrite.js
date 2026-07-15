@@ -1,13 +1,21 @@
 (function () {
   "use strict";
 
+  function editorResourcesTarget(contextPath) {
+    var path = contextPath || window.location.pathname || "";
+    if (path.indexOf("/presentationeditor/") >= 0) return "/web-apps/apps/presentationeditor/main/resources/";
+    if (path.indexOf("/spreadsheeteditor/") >= 0) return "/web-apps/apps/spreadsheeteditor/main/resources/";
+    if (path.indexOf("/documenteditor/") >= 0) return "/web-apps/apps/documenteditor/main/resources/";
+    if (path.indexOf("/pdfeditor/") >= 0) return "/web-apps/apps/pdfeditor/main/resources/";
+    return "/web-apps/apps/common/main/resources/";
+  }
+
   var ALIASES = [
     ["/editor/word/", "/web-apps/apps/documenteditor/main/"],
     ["/editor/cell/", "/web-apps/apps/spreadsheeteditor/main/"],
     ["/editor/slide/", "/web-apps/apps/presentationeditor/main/"],
     ["/editor/pdf/", "/web-apps/apps/pdfeditor/main/"],
     ["/editor/visio/", "/web-apps/apps/visioeditor/main/"],
-    ["/editor/resources/", "/web-apps/apps/pdfeditor/main/resources/"],
   ];
 
   var APP_ROUTES = {
@@ -26,7 +34,7 @@
     "/sdkjs/",
     "/fonts/",
     "/x2t/",
-    "/statiq/",
+    "/office-shims/",
     "/common/main/",
   ];
 
@@ -53,6 +61,22 @@
     return base + path;
   }
 
+  // ONLYOFFICE attempts to register its document worker at the repository
+  // root, which would replace the PWA worker controlling the whole app.
+  if (navigator.serviceWorker && !navigator.serviceWorker.__statiqRegisterPatched) {
+    var nativeRegister = navigator.serviceWorker.register.bind(navigator.serviceWorker);
+    navigator.serviceWorker.register = function (scriptURL, options) {
+      if (String(scriptURL).indexOf("document_editor_service_worker.js") >= 0) {
+        return nativeRegister(withBase("/sw.js"), {
+          scope: withBase("/"),
+          updateViaCache: "none",
+        });
+      }
+      return nativeRegister(scriptURL, options);
+    };
+    navigator.serviceWorker.__statiqRegisterPatched = true;
+  }
+
   function isDocumentRelativeUrl(url) {
     if (!url || typeof url !== "string") return false;
     if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return false;
@@ -75,6 +99,11 @@
     try {
       var resolved = new URL(url, window.location.href);
       var path = stripBase(resolved.pathname);
+
+      if (path.indexOf("/editor/resources/") === 0) {
+        resolved.pathname = withBase(editorResourcesTarget(window.location.pathname) + path.slice("/editor/resources/".length));
+        return resolved.href;
+      }
       if (!path.startsWith("/")) path = "/" + path;
 
       if (APP_ROUTES[path]) return url;

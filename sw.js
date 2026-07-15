@@ -20,7 +20,6 @@ const EDITOR_ALIASES = [
   ["/editor/slide/", "/web-apps/apps/presentationeditor/main/"],
   ["/editor/pdf/", "/web-apps/apps/pdfeditor/main/"],
   ["/editor/visio/", "/web-apps/apps/visioeditor/main/"],
-  ["/editor/resources/", "/web-apps/apps/pdfeditor/main/resources/"],
   ["/common/main/", "/web-apps/apps/common/main/"],
   ["/themes.json", "/themes.json"],
 ];
@@ -38,15 +37,28 @@ const APP_EDITOR_ROUTES = new Set([
   "/editor/pdf/",
 ]);
 
-function rewriteAlias(path) {
+function editorResourcesTarget(referrer) {
+  if (referrer.includes("/presentationeditor/")) return "/web-apps/apps/presentationeditor/main/resources/";
+  if (referrer.includes("/spreadsheeteditor/")) return "/web-apps/apps/spreadsheeteditor/main/resources/";
+  if (referrer.includes("/documenteditor/")) return "/web-apps/apps/documenteditor/main/resources/";
+  if (referrer.includes("/pdfeditor/")) return "/web-apps/apps/pdfeditor/main/resources/";
+  return "/web-apps/apps/common/main/resources/";
+}
+
+function rewriteAlias(path, referrer = "") {
   if (APP_EDITOR_ROUTES.has(path)) return null;
+  if (path.startsWith("/editor/resources/")) {
+    return editorResourcesTarget(referrer) + path.slice("/editor/resources/".length);
+  }
+  const legacyShim = path.match(/^\/(?:statiq\/)?(asset-rewrite|document-server-shim|asc-desktop-fonts|custom-fonts-merge)\.js$/);
+  if (legacyShim) return `/office-shims/${legacyShim[1]}.js`;
   for (const [from, to] of EDITOR_ALIASES) {
     if (path.startsWith(from)) return to + path.slice(from.length);
   }
   return null;
 }
 
-const CACHE = "statiq-v7";
+const CACHE = "statiq-v9";
 
 const PRECACHE = [
   withBase("/"),
@@ -62,10 +74,10 @@ const PRECACHE = [
   withBase("/templates/new.docx"),
   withBase("/templates/new.xlsx"),
   withBase("/templates/new.pptx"),
-  withBase("/statiq/asset-rewrite.js"),
-  withBase("/statiq/document-server-shim.js"),
-  withBase("/statiq/asc-desktop-fonts.js"),
-  withBase("/statiq/custom-fonts-merge.js"),
+  withBase("/office-shims/asset-rewrite.js"),
+  withBase("/office-shims/document-server-shim.js"),
+  withBase("/office-shims/asc-desktop-fonts.js"),
+  withBase("/office-shims/custom-fonts-merge.js"),
   withBase("/web-apps/apps/api/documents/api.js"),
   withBase("/web-apps/apps/api/documents/preload.html"),
   withBase("/sdkjs/common/AllFonts.js"),
@@ -126,7 +138,7 @@ self.addEventListener("fetch", (event) => {
 
   const path = stripBase(url.pathname);
 
-  const aliased = rewriteAlias(path);
+  const aliased = rewriteAlias(path, request.referrer || "");
   if (aliased) {
     const target = new URL(request.url);
     target.pathname = withBase(aliased);
@@ -144,7 +156,7 @@ self.addEventListener("fetch", (event) => {
     path.startsWith("/fonts/") ||
     path.startsWith("/x2t/") ||
     path.startsWith("/allfontsgen/") ||
-    path.startsWith("/statiq/") ||
+    path.startsWith("/office-shims/") ||
     path.startsWith("/templates/");
 
   const isStaticChunk = path.startsWith("/_next/static/");

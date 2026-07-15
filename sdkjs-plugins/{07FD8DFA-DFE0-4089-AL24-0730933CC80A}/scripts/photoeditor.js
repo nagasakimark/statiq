@@ -33,6 +33,7 @@ var oImage = false;
 var imageEditor = null;
 var themeStyle = null;
 var bNewVersion = false;
+var saveInProgress = false;
 
 (function(window, undefined){
 
@@ -57,6 +58,12 @@ var bNewVersion = false;
     var translationDone = false;
     var initializationDone = false;
     var language = null;
+    var nativeGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, options) {
+        if (type === "2d" && !options)
+            options = { willReadFrequently: true };
+        return nativeGetContext.call(this, type, options);
+    };
 
     window.Asc.plugin.onTranslate = function () {
         language = {
@@ -136,8 +143,8 @@ var bNewVersion = false;
             'History': window.Asc.plugin.tr("History")
         };
 
-        CreateImageEditor();
         translationDone = true;
+        CreateImageEditor();
     };
 
     window.Asc.plugin.init = function (sHtml) {
@@ -167,8 +174,8 @@ var bNewVersion = false;
                 }
                 bNewVersion = (oResult === null);
             }
-            CreateImageEditor();
             initializationDone = true;
+            CreateImageEditor();
             var imageHeight = null;
             oImage.height > 500 ? imageHeight = 500 : imageHeight = oImage.height;
             window.Asc.plugin.resizeWindow(undefined, undefined, 870, imageHeight + 300, 0, 0);
@@ -177,12 +184,10 @@ var bNewVersion = false;
 
     window.Asc.plugin.button = function (id) {
 
-        if (id == 0) {
+        if (id == 0 && !saveInProgress) {
+            saveInProgress = true;
             if (imageEditor.getDrawingMode() === 'CROPPER') {
-                var imageData = imageEditor.crop(imageEditor.getCropzoneRect()).then(function () {
-                        saveImage();
-                    }
-                );
+                imageEditor.crop(imageEditor.getCropzoneRect()).then(saveImage).catch(showSaveError);
             } else {
                 saveImage();
             }
@@ -193,7 +198,7 @@ var bNewVersion = false;
 
     function CreateImageEditor() {
 
-        if (initializationDone == true || translationDone == true) {
+        if (initializationDone == true && translationDone == true && oImage && !imageEditor) {
             imageEditor = new tui.ImageEditor('#tui-image-editor-container', {
 
                 includeUI: {
@@ -217,25 +222,58 @@ var bNewVersion = false;
         }
     }
 
+    function showSaveError(error) {
+        saveInProgress = false;
+        var message = error && error.message ? error.message : "The edited image could not be saved.";
+        console.error("Photo Editor save failed", error);
+        window.alert(message);
+    }
+
+    function captureBoundedImage() {
+        var dimension = imageEditor.getCanvasSize();
+        var maxDimension = 4096;
+        var maxPixels = 16000000;
+        var scale = Math.min(1, maxDimension / dimension.width, maxDimension / dimension.height,
+            Math.sqrt(maxPixels / (dimension.width * dimension.height)));
+        var capture = function () {
+            var size = imageEditor.getCanvasSize();
+            var src = imageEditor.toDataURL({ format: "png" });
+            if (src.length > 24 * 1024 * 1024)
+                throw new Error("The edited image is too large to save. Reduce its dimensions and try again.");
+            return { src: src, width: size.width, height: size.height };
+        };
+        if (scale < 1) {
+            return imageEditor.resize({
+                width: Math.max(1, Math.round(dimension.width * scale)),
+                height: Math.max(1, Math.round(dimension.height * scale))
+            }).then(capture);
+        }
+        return Promise.resolve().then(capture);
+    }
+
     window.saveImage = function () {
         if (bNewVersion) {
-            let sImageSrc = imageEditor.toDataURL();
-            let editorDimension = imageEditor.getCanvasSize();
-            let nWidth = editorDimension.width;
-            let nHeight = editorDimension.height;
-            let oImageData = {
-                "src": sImageSrc,
-                "width": nWidth,
-                "height": nHeight
-            };
-            window.Asc.plugin.executeMethod ("PutImageDataToSelection", [oImageData]);
-            window.Asc.plugin.executeCommand("close", "");
+            captureBoundedImage().then(function (oImageData) {
+                oImageData.replaceMode = "original";
+                if (window.parent && typeof window.parent.__statiqRegisterPluginImage === "function")
+                    oImageData.src = window.parent.__statiqRegisterPluginImage(oImageData.src);
+                var completed = false;
+                var timeout = setTimeout(function () {
+                    if (!completed) showSaveError(new Error("Saving the edited image timed out."));
+                }, 20000);
+                window.Asc.plugin.executeMethod("PutImageDataToSelection", [oImageData], function () {
+                    completed = true;
+                    clearTimeout(timeout);
+                    window.Asc.plugin.executeCommand("close", "");
+                });
+            }).catch(showSaveError);
         } else {
             Asc.scope.dataURL = imageEditor.toDataURL();
             var editorDimension = imageEditor.getCanvasSize();
             Asc.scope.editorDimensionWidth = editorDimension.width;
             Asc.scope.editorDimensionHeight = editorDimension.height;
-            var saveImage = createScript();
+            createScript();
+            window.Asc.plugin.executeCommand("close", "");
         }
     }
 

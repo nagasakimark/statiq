@@ -1154,6 +1154,10 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
                 if (type && typeof type[6] === 'string') appType = 'diagram';
             }
         }
+        // Statiq Office: chart OLE editing always uses the internal spreadsheet
+        // editor, even when the host document is a presentation.
+        if (config.editorConfig && config.editorConfig.mode === 'editole')
+            appType = 'cell';
         if (!(config.editorConfig && config.editorConfig.shardkey && config.document && config.editorConfig.shardkey!==config.document.key))
             path = extendAppPath(config, path);
         path += appMap[appType];
@@ -1316,6 +1320,8 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
     }
 
     function extendAppPath(config,  path) {
+        if (typeof window.__STATIQ_BASE_PATH__ === "string")
+            return path;
         if ( !config.isLocalFile ) {
             const ver = '/9.3.0-e6f348e8595590fa860a3e46380ca2bf';
             if ( ver.lastIndexOf('{{') < 0 && path.indexOf(ver) < 0 ) {
