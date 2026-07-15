@@ -67,9 +67,9 @@
     var nativeRegister = navigator.serviceWorker.register.bind(navigator.serviceWorker);
     navigator.serviceWorker.register = function (scriptURL, options) {
       if (String(scriptURL).indexOf("document_editor_service_worker.js") >= 0) {
-        return nativeRegister(withBase("/sw.js"), {
-          scope: withBase("/"),
-          updateViaCache: "none",
+        var scope = withBase("/");
+        return navigator.serviceWorker.getRegistration(scope).then(function (registration) {
+          return registration || nativeRegister(withBase("/sw.js"), { scope: scope });
         });
       }
       return nativeRegister(scriptURL, options);
