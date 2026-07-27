@@ -21,8 +21,9 @@ const EDITOR_ALIASES = [
   ["/editor/pdf/", "/web-apps/apps/pdfeditor/main/"],
   ["/editor/visio/", "/web-apps/apps/visioeditor/main/"],
   ["/common/main/", "/web-apps/apps/common/main/"],
-  ["/themes.json", "/themes.json"],
 ];
+
+const THEMES_JSON_TARGET = "/web-apps/apps/common/main/resources/themes/themes.json";
 
 const APP_EDITOR_ROUTES = new Set([
   "/editor",
@@ -45,10 +46,19 @@ function editorResourcesTarget(referrer) {
   return "/web-apps/apps/common/main/resources/";
 }
 
+function editorContextFromReferrer(referrer) {
+  if (referrer.includes("/presentationeditor/")) return "/web-apps/apps/presentationeditor/main/";
+  if (referrer.includes("/spreadsheeteditor/")) return "/web-apps/apps/spreadsheeteditor/main/";
+  if (referrer.includes("/documenteditor/")) return "/web-apps/apps/documenteditor/main/";
+  if (referrer.includes("/pdfeditor/")) return "/web-apps/apps/pdfeditor/main/";
+  return referrer;
+}
+
 function rewriteAlias(path, referrer = "") {
   if (APP_EDITOR_ROUTES.has(path)) return null;
+  if (path === "/themes.json") return THEMES_JSON_TARGET;
   if (path.startsWith("/editor/resources/")) {
-    return editorResourcesTarget(referrer) + path.slice("/editor/resources/".length);
+    return editorResourcesTarget(editorContextFromReferrer(referrer)) + path.slice("/editor/resources/".length);
   }
   const legacyShim = path.match(/^\/(?:statiq\/)?(asset-rewrite|document-server-shim|asc-desktop-fonts|custom-fonts-merge)\.js$/);
   if (legacyShim) return `/office-shims/${legacyShim[1]}.js`;

@@ -100,6 +100,10 @@
       var resolved = new URL(url, window.location.href);
       var path = stripBase(resolved.pathname);
 
+      if (path === "/themes.json") {
+        resolved.pathname = withBase("/web-apps/apps/common/main/resources/themes/themes.json");
+        return resolved.href;
+      }
       if (path.indexOf("/editor/resources/") === 0) {
         resolved.pathname = withBase(editorResourcesTarget(window.location.pathname) + path.slice("/editor/resources/".length));
         return resolved.href;

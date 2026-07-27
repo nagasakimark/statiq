@@ -38,6 +38,7 @@
       "action": "./",
       "accept": {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+        "application/epub+zip": [".epub"],
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
         "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
         "application/pdf": [".pdf"],
