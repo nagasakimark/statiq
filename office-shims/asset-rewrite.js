@@ -3,10 +3,18 @@
 
   function editorResourcesTarget(contextPath) {
     var path = contextPath || window.location.pathname || "";
-    if (path.indexOf("/presentationeditor/") >= 0) return "/web-apps/apps/presentationeditor/main/resources/";
-    if (path.indexOf("/spreadsheeteditor/") >= 0) return "/web-apps/apps/spreadsheeteditor/main/resources/";
-    if (path.indexOf("/documenteditor/") >= 0) return "/web-apps/apps/documenteditor/main/resources/";
-    if (path.indexOf("/pdfeditor/") >= 0) return "/web-apps/apps/pdfeditor/main/resources/";
+    if (path.indexOf("/presentationeditor/") >= 0 || /\/editor\/slide(?:\/|$|\?)/.test(path)) {
+      return "/web-apps/apps/presentationeditor/main/resources/";
+    }
+    if (path.indexOf("/spreadsheeteditor/") >= 0 || /\/editor\/cell(?:\/|$|\?)/.test(path)) {
+      return "/web-apps/apps/spreadsheeteditor/main/resources/";
+    }
+    if (path.indexOf("/documenteditor/") >= 0 || /\/editor\/word(?:\/|$|\?)/.test(path)) {
+      return "/web-apps/apps/documenteditor/main/resources/";
+    }
+    if (path.indexOf("/pdfeditor/") >= 0 || /\/editor\/pdf(?:\/|$|\?)/.test(path)) {
+      return "/web-apps/apps/pdfeditor/main/resources/";
+    }
     return "/web-apps/apps/common/main/resources/";
   }
 

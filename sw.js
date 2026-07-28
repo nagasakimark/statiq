@@ -39,10 +39,18 @@ const APP_EDITOR_ROUTES = new Set([
 ]);
 
 function editorResourcesTarget(referrer) {
-  if (referrer.includes("/presentationeditor/")) return "/web-apps/apps/presentationeditor/main/resources/";
-  if (referrer.includes("/spreadsheeteditor/")) return "/web-apps/apps/spreadsheeteditor/main/resources/";
-  if (referrer.includes("/documenteditor/")) return "/web-apps/apps/documenteditor/main/resources/";
-  if (referrer.includes("/pdfeditor/")) return "/web-apps/apps/pdfeditor/main/resources/";
+  if (referrer.includes("/presentationeditor/") || /\/editor\/slide(?:\/|$|\?)/.test(referrer)) {
+    return "/web-apps/apps/presentationeditor/main/resources/";
+  }
+  if (referrer.includes("/spreadsheeteditor/") || /\/editor\/cell(?:\/|$|\?)/.test(referrer)) {
+    return "/web-apps/apps/spreadsheeteditor/main/resources/";
+  }
+  if (referrer.includes("/documenteditor/") || /\/editor\/word(?:\/|$|\?)/.test(referrer)) {
+    return "/web-apps/apps/documenteditor/main/resources/";
+  }
+  if (referrer.includes("/pdfeditor/") || /\/editor\/pdf(?:\/|$|\?)/.test(referrer)) {
+    return "/web-apps/apps/pdfeditor/main/resources/";
+  }
   return "/web-apps/apps/common/main/resources/";
 }
 
@@ -68,7 +76,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-v9";
+const CACHE = "statiq-v10";
 
 const PRECACHE = [
   withBase("/"),
