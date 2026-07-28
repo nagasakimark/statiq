@@ -278,21 +278,52 @@
    * Extend the stock font thumbnail sprite with one row per custom font, rendered
    * with the real face via FontFace. ComboBoxFonts (patched) prefers
    * window.__statiqFontsSprite[ratio] over the stock sprite path.
+   *
+   * Custom fonts are appended to __fonts_infos, so their imgidx values are
+   * stockRows, stockRows+1, … — rows here must stay aligned with that ordinal.
    */
+  function notifyFontSpritesReady() {
+    window.__statiqFontsSpriteReady = true;
+    function fire() {
+      try {
+        if (window.Common && Common.NotificationCenter) {
+          Common.NotificationCenter.trigger("statiq:fonts-sprite-ready");
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+    if (fire()) return;
+    // Sprite gen often finishes before web-apps boots — retry briefly.
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries += 1;
+      if (fire() || tries > 40) clearInterval(timer);
+    }, 250);
+  }
+
   function generateFontSprites() {
     var manifest = readManifest();
     if (!manifest || !manifest.files || !manifest.files.length || !manifest.infos) return;
     if (typeof FontFace === "undefined") return;
 
+    // Keep one slot per manifest.infos entry so row index == stockRows + infoIndex
+    // matches SDK imgidx (position in concatenated __fonts_infos).
     var entries = [];
     for (var i = 0; i < manifest.infos.length; i++) {
-      var family = manifest.infos[i] && manifest.infos[i][0];
-      if (!family) continue;
-      entries.push({ family: family, fileId: manifest.files[i] });
+      var family = (manifest.infos[i] && manifest.infos[i][0]) || "";
+      entries.push({
+        family: family,
+        fileId: manifest.files[i],
+        infoIndex: i,
+      });
     }
     if (!entries.length) return;
 
+    window.__statiqFontsSpritePending = true;
+
     function loadFontFace(entry) {
+      if (!entry.family || !entry.fileId) return Promise.resolve(null);
       var payload =
         fontStore()[entry.fileId] ||
         ensureDeobfuscatedPayload((readManifestBinaries() || {})[entry.fileId]);
@@ -302,7 +333,11 @@
         var bytes = decodeDesktopPayload(p);
         if (!bytes || !bytes.length) return Promise.resolve(null);
         try {
-          var face = new FontFace(entry.family, bytes.buffer);
+          var copy = bytes.buffer.slice(
+            bytes.byteOffset,
+            bytes.byteOffset + bytes.byteLength
+          );
+          var face = new FontFace(entry.family, copy);
           return face
             .load()
             .then(function (loaded) {
@@ -334,6 +369,17 @@
     ];
 
     Promise.all(faceLoads).then(function () {
+      var pending = ratios.length;
+      var completed = 0;
+
+      function ratioDone() {
+        completed += 1;
+        if (completed >= pending) {
+          window.__statiqFontsSpritePending = false;
+          notifyFontSpritesReady();
+        }
+      }
+
       ratios.forEach(function (cfg) {
         var img = new Image();
         img.onload = function () {
@@ -348,11 +394,12 @@
             ctx.fillStyle = "#000";
             ctx.textBaseline = "middle";
             for (var i = 0; i < entries.length; i++) {
+              if (!entries[i].family) continue;
               ctx.font = Math.round(16 * cfg.r) + 'px "' + entries[i].family + '", sans-serif';
               ctx.fillText(
                 entries[i].family,
                 Math.round(2 * cfg.r),
-                (stockRows + i) * rowH + Math.round(rowH / 2),
+                (stockRows + entries[i].infoIndex) * rowH + Math.round(rowH / 2),
                 canvas.width - Math.round(4 * cfg.r)
               );
             }
@@ -361,6 +408,11 @@
           } catch (e) {
             console.warn("Custom font sprite generation failed", e);
           }
+          ratioDone();
+        };
+        img.onerror = function () {
+          console.warn("Custom font sprite stock image failed", cfg.suffix);
+          ratioDone();
         };
         img.src = withBase("/sdkjs/common/Images/fonts_thumbnail" + ea + cfg.suffix + ".png");
       });
@@ -437,6 +489,9 @@
   };
   existing.LoadFontBase64 = loadFontBase64;
   existing.getFontsSprite = existing.getFontsSprite || getFontsSprite;
+  // Force ComboBoxFonts onto the PNG path so __statiqFontsSprite (extended with
+  // custom-font rows) is used. Stock .bin sprites only contain 144 rows.
+  existing.isSupportBinaryFontsSprite = false;
   existing.CreateEditorApi = existing.CreateEditorApi || noop;
   existing.SetFullscreen = existing.SetFullscreen || noop;
   existing.startReporter = existing.startReporter || noop;
