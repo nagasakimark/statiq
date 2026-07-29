@@ -499,6 +499,7 @@ window["g_fonts_selection_bin"] = "4AAAAJsAAAALAAAARGVqYVZ1IFNhbnMAAAAANAAAAC91c
   // in the picker but always render with a substituted stock font.
   function mergeSelectionBin(selection) {
     if (!selection || !selection.bin) return;
+    if (window.__statiqSelectionMerged) return;
 
     var jsVersion = window["__all_fonts_js_version__"] || 0;
     if (selection.version !== jsVersion) {
@@ -524,30 +525,57 @@ window["g_fonts_selection_bin"] = "4AAAAJsAAAALAAAARGVqYVZ1IFNhbnMAAAAANAAAAC91c
     writeInt32LE(merged, 0, readInt32LE(stockBytes, 0) + readInt32LE(customBytes, 0));
 
     window["g_fonts_selection_bin"] = bytesToBase64(merged);
+    window.__statiqSelectionMerged = true;
   }
 
   function mergeCustomFonts() {
     try {
-      var raw = localStorage.getItem(MANIFEST_KEY);
+      var raw =
+        window.__statiqFontManifestRaw ||
+        (typeof localStorage !== "undefined" ? localStorage.getItem(MANIFEST_KEY) : null);
       if (!raw) return;
       var manifest = JSON.parse(raw);
       if (!manifest || !manifest.files || !manifest.files.length) return;
 
-      window.__fonts_files = (window.__fonts_files || []).concat(manifest.files);
-      window.__fonts_infos = (window.__fonts_infos || []).concat(manifest.infos);
+      // Idempotent — sdk may call __statiqRemergeFonts immediately before consume.
+      var files = window.__fonts_files || [];
+      var infos = window.__fonts_infos || [];
+      var fi;
+      for (fi = 0; fi < manifest.files.length; fi++) {
+        if (files.indexOf(manifest.files[fi]) < 0) files.push(manifest.files[fi]);
+      }
+      window.__fonts_files = files;
+
+      var infosIn = Array.isArray(manifest.infos) ? manifest.infos : [];
+      for (fi = 0; fi < infosIn.length; fi++) {
+        var family = infosIn[fi] && infosIn[fi][0];
+        if (!family) continue;
+        var exists = false;
+        for (var ki = 0; ki < infos.length; ki++) {
+          if (infos[ki] && infos[ki][0] === family) {
+            exists = true;
+            break;
+          }
+        }
+        if (!exists) infos.push(infosIn[fi]);
+      }
+      window.__fonts_infos = infos;
 
       hydrateBinaries(manifest.binaries);
 
-      var seedRaw = localStorage.getItem(FONT_SEED_KEY);
+      var seedRaw =
+        typeof localStorage !== "undefined" ? localStorage.getItem(FONT_SEED_KEY) : null;
       if (seedRaw) {
         hydrateBinaries(JSON.parse(seedRaw));
       }
 
       mergeSelectionBin(manifest.selection);
+      window.__statiqFontsMerged = infosIn.length;
     } catch (e) {
       console.warn("Custom font manifest merge failed", e);
     }
   }
 
+  window.__statiqRemergeFonts = mergeCustomFonts;
   mergeCustomFonts();
 })();

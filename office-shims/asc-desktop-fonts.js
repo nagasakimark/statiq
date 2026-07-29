@@ -274,6 +274,14 @@
 
   hydrateSeedCache();
 
+  // Cache manifest for AllFonts.js merge (runs later via require). Same window.
+  try {
+    var cachedManifest = localStorage.getItem("statiq-custom-font-manifest");
+    if (cachedManifest) window.__statiqFontManifestRaw = cachedManifest;
+  } catch (e) {
+    /* localStorage may be unavailable */
+  }
+
   /**
    * Extend the stock font thumbnail sprite with one row per custom font, rendered
    * with the real face via FontFace. ComboBoxFonts (patched) prefers
