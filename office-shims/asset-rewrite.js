@@ -39,11 +39,13 @@
 
   var OFFICE_ROOT_PREFIXES = [
     "/web-apps/",
+    "/sdkjs-plugins/",
     "/sdkjs/",
     "/fonts/",
     "/x2t/",
     "/office-shims/",
     "/common/main/",
+    "/plugins.json",
   ];
 
   function basePath() {

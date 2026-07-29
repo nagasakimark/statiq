@@ -76,7 +76,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-v11";
+const CACHE = "statiq-v12";
 
 const PRECACHE = [
   withBase("/"),
@@ -169,13 +169,15 @@ self.addEventListener("fetch", (event) => {
   const isMutableFontBinary = path.startsWith("/api/fonts/binary/");
 
   const isOfficeAsset =
+    path.startsWith("/sdkjs-plugins/") ||
     path.startsWith("/sdkjs/") ||
     path.startsWith("/web-apps/") ||
     path.startsWith("/fonts/") ||
     path.startsWith("/x2t/") ||
     path.startsWith("/allfontsgen/") ||
     path.startsWith("/office-shims/") ||
-    path.startsWith("/templates/");
+    path.startsWith("/templates/") ||
+    path === "/plugins.json";
 
   const isStaticChunk = path.startsWith("/_next/static/");
 
