@@ -76,7 +76,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-v14";
+const CACHE = "statiq-v15";
 
 const PRECACHE = [
   withBase("/"),
