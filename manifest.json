@@ -6,8 +6,8 @@
   "scope": "./",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui", "browser"],
-  "background_color": "#f3f2f1",
-  "theme_color": "#f3f2f1",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "orientation": "any",
   "categories": ["productivity", "utilities"],
   "launch_handler": {

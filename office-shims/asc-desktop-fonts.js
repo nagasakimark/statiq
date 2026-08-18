@@ -17,6 +17,25 @@
   ]);
   var DEFAULT_THEME = { id: "theme-classic-light", type: "light", system: "disabled" };
 
+  function configuredTheme() {
+    var id = "";
+    try {
+      id = new URLSearchParams(window.location.search).get("uitheme") || "";
+    } catch (e) {}
+    if (!id) {
+      try {
+        var settings = JSON.parse(localStorage.getItem("statiq-app-settings") || "{}");
+        id = settings.editorTheme || "";
+      } catch (e) {}
+    }
+    if (!id) return DEFAULT_THEME;
+    return {
+      id: id,
+      type: /(?:dark|night)/i.test(id) ? "dark" : "light",
+      system: "disabled",
+    };
+  }
+
   function noop() {}
 
   function deobfuscateFontBytes(bytes) {
@@ -467,7 +486,7 @@
   function ensureRendererProcessVariable() {
     window.RendererProcessVariable = window.RendererProcessVariable || {};
     if (!window.RendererProcessVariable.theme) {
-      window.RendererProcessVariable.theme = DEFAULT_THEME;
+      window.RendererProcessVariable.theme = configuredTheme();
     }
     if (!window.RendererProcessVariable.localthemes) {
       window.RendererProcessVariable.localthemes = {};

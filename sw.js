@@ -68,7 +68,7 @@ function rewriteAlias(path, referrer = "") {
   if (path.startsWith("/editor/resources/")) {
     return editorResourcesTarget(editorContextFromReferrer(referrer)) + path.slice("/editor/resources/".length);
   }
-  const legacyShim = path.match(/^\/(?:statiq\/)?(asset-rewrite|document-server-shim|asc-desktop-fonts|custom-fonts-merge)\.js$/);
+  const legacyShim = path.match(/^\/(?:statiq\/)?(asset-rewrite|document-server-shim|asc-desktop-fonts|custom-fonts-merge|custom-fonts-picker)\.js$/);
   if (legacyShim) return `/office-shims/${legacyShim[1]}.js`;
   for (const [from, to] of EDITOR_ALIASES) {
     if (path.startsWith(from)) return to + path.slice(from.length);
@@ -76,11 +76,12 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-v16";
+const CACHE = "statiq-jjw_by3EeqdGni09pbstH";
 
 const PRECACHE = [
   withBase("/"),
   withBase("/manifest.json"),
+  withBase("/offline-assets.json"),
   withBase("/icons/logo.png"),
   withBase("/icons/icon-192.png"),
   withBase("/icons/icon-512.png"),
@@ -96,6 +97,7 @@ const PRECACHE = [
   withBase("/office-shims/document-server-shim.js"),
   withBase("/office-shims/asc-desktop-fonts.js"),
   withBase("/office-shims/custom-fonts-merge.js"),
+  withBase("/office-shims/custom-fonts-picker.js"),
   withBase("/web-apps/apps/api/documents/api.js"),
   withBase("/web-apps/apps/api/documents/preload.html"),
   withBase("/sdkjs/common/AllFonts.js"),
@@ -105,8 +107,67 @@ const PRECACHE = [
   withBase("/x2t/x2t.wasm"),
 ];
 
+async function downloadOfflineAssets(port) {
+  const cache = await caches.open(CACHE);
+  const manifestUrl = withBase("/offline-assets.json");
+  const response = await fetch(manifestUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Offline asset manifest returned ${response.status}`);
+
+  await cache.put(new Request(new URL(manifestUrl, self.location.origin)), response.clone());
+  const manifest = await response.json();
+  const files = Array.isArray(manifest.files) ? manifest.files : [];
+  const version = String(manifest.version || CACHE);
+  const marker = new Request(
+    new URL(withBase(`/__offline_complete__/${encodeURIComponent(version)}`), self.location.origin),
+  );
+
+  if (await cache.match(marker)) {
+    port?.postMessage({ type: "complete", completed: files.length, total: files.length, failed: 0 });
+    return;
+  }
+
+  let completed = 0;
+  const failures = [];
+  const concurrency = 6;
+
+  for (let start = 0; start < files.length; start += concurrency) {
+    const batch = files.slice(start, start + concurrency);
+    await Promise.all(
+      batch.map(async (file) => {
+        const url = new URL(withBase(file), self.location.origin);
+        const request = new Request(url);
+        try {
+          if (!(await cache.match(request))) {
+            const asset = await fetch(request);
+            if (!asset.ok) throw new Error(`${asset.status}`);
+            await cache.put(request, asset);
+          }
+        } catch (error) {
+          failures.push(`${file}: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+          completed += 1;
+        }
+      }),
+    );
+    if (completed % 30 < concurrency || completed === files.length) {
+      port?.postMessage({ type: "progress", completed, total: files.length, failed: failures.length });
+    }
+  }
+
+  if (failures.length === 0) {
+    await cache.put(marker, new Response(version));
+  }
+  port?.postMessage({
+    type: "complete",
+    completed,
+    total: files.length,
+    failed: failures.length,
+    errors: failures.slice(0, 20),
+  });
+}
+
 async function cacheFirst(request, cache) {
-  const cached = await cache.match(request);
+  const cached = await cache.match(request, { ignoreSearch: true });
   if (cached) return cached;
   const response = await fetch(request);
   if (response.ok) await cache.put(request, response.clone());
@@ -119,10 +180,15 @@ async function networkFirst(request, cache) {
     if (response.ok) await cache.put(request, response.clone());
     return response;
   } catch {
-    const cached = await cache.match(request);
+    const cached = await cache.match(request, { ignoreSearch: true });
     if (cached) return cached;
     if (request.mode === "navigate") {
-      const fallback = await cache.match(withBase("/"));
+      const path = stripBase(new URL(request.url).pathname);
+      const routeFallback =
+        path.startsWith("/settings") ? withBase("/settings/") :
+        path.startsWith("/editor") ? withBase("/editor/") :
+        withBase("/");
+      const fallback = await cache.match(routeFallback, { ignoreSearch: true });
       if (fallback) return fallback;
     }
     throw new Error("offline and not cached: " + request.url);
@@ -144,6 +210,19 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "CACHE_OFFLINE_ASSETS") return;
+  const port = event.ports?.[0];
+  event.waitUntil(
+    downloadOfflineAssets(port).catch((error) => {
+      port?.postMessage({
+        type: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }),
   );
 });
 
