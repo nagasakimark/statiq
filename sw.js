@@ -76,8 +76,9 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-U2JavMedx8uwN57C8f72n";
+const CACHE = "statiq--Vz7s7Uz9ZX6_trDVOxar";
 
+// App shell only. Editor runtimes are downloaded from Settings, not on first visit.
 const PRECACHE = [
   withBase("/"),
   withBase("/manifest.json"),
@@ -91,21 +92,11 @@ const PRECACHE = [
   withBase("/icons/powerpoint.png"),
   withBase("/editor/"),
   withBase("/settings/"),
-  withBase("/templates/new.docx"),
-  withBase("/templates/new.xlsx"),
-  withBase("/templates/new.pptx"),
   withBase("/office-shims/asset-rewrite.js"),
   withBase("/office-shims/document-server-shim.js"),
   withBase("/office-shims/asc-desktop-fonts.js"),
   withBase("/office-shims/custom-fonts-merge.js"),
   withBase("/office-shims/custom-fonts-picker.js"),
-  withBase("/web-apps/apps/api/documents/api.js"),
-  withBase("/web-apps/apps/api/documents/preload.html"),
-  withBase("/sdkjs/common/AllFonts.js"),
-  withBase("/allfontsgen/allfontsgen.js"),
-  withBase("/allfontsgen/allfontsgen.wasm"),
-  withBase("/x2t/x2t.js"),
-  withBase("/x2t/x2t.wasm"),
 ];
 
 async function verifyOfflineScope(cache, scope) {
