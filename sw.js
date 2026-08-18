@@ -76,7 +76,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq--Vz7s7Uz9ZX6_trDVOxar";
+const CACHE = "statiq-UEXRzWyT2vaRTzWVlQ3er";
 
 // App shell only. Editor runtimes are downloaded from Settings, not on first visit.
 const PRECACHE = [
@@ -92,6 +92,7 @@ const PRECACHE = [
   withBase("/icons/powerpoint.png"),
   withBase("/editor/"),
   withBase("/settings/"),
+  withBase("/comparison/"),
   withBase("/office-shims/asset-rewrite.js"),
   withBase("/office-shims/document-server-shim.js"),
   withBase("/office-shims/asc-desktop-fonts.js"),
@@ -210,6 +211,7 @@ async function networkFirst(request, cache) {
       const path = stripBase(new URL(request.url).pathname);
       const routeFallback =
         path.startsWith("/settings") ? withBase("/settings/") :
+        path.startsWith("/comparison") ? withBase("/comparison/") :
         path.startsWith("/editor") ? withBase("/editor/") :
         withBase("/");
       const fallback = await cache.match(routeFallback, { ignoreSearch: true });
