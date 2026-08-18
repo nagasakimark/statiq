@@ -131,7 +131,17 @@
 
   function readManifest() {
     try {
-      var raw = localStorage.getItem(FONT_MANIFEST_KEY);
+      var raw = window.__statiqFontManifestRaw;
+      if (!raw) {
+        try {
+          if (window.parent && window.parent !== window && window.parent.__statiqFontManifestRaw) {
+            raw = window.parent.__statiqFontManifestRaw;
+          }
+        } catch (e) {
+          raw = null;
+        }
+      }
+      if (!raw) raw = localStorage.getItem(FONT_MANIFEST_KEY);
       if (!raw) return null;
       return JSON.parse(raw);
     } catch (e) {

@@ -154,11 +154,25 @@
     window.__statiqSelectionMerged = true;
   }
 
+  function readManifestRaw() {
+    if (window.__statiqFontManifestRaw) return window.__statiqFontManifestRaw;
+    try {
+      if (window.parent && window.parent !== window && window.parent.__statiqFontManifestRaw) {
+        return window.parent.__statiqFontManifestRaw;
+      }
+    } catch (e) {
+      // ignore
+    }
+    try {
+      return typeof localStorage !== "undefined" ? localStorage.getItem(MANIFEST_KEY) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function mergeCustomFonts() {
     try {
-      var raw =
-        window.__statiqFontManifestRaw ||
-        (typeof localStorage !== "undefined" ? localStorage.getItem(MANIFEST_KEY) : null);
+      var raw = readManifestRaw();
       if (!raw) return;
       var manifest = JSON.parse(raw);
       if (!manifest || !manifest.files || !manifest.files.length) return;

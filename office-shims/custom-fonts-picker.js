@@ -15,9 +15,19 @@
 
   function readManifest() {
     try {
-      var raw =
-        window.__statiqFontManifestRaw ||
-        (typeof localStorage !== "undefined" ? localStorage.getItem(MANIFEST_KEY) : null);
+      var raw = window.__statiqFontManifestRaw;
+      if (!raw) {
+        try {
+          if (window.parent && window.parent !== window && window.parent.__statiqFontManifestRaw) {
+            raw = window.parent.__statiqFontManifestRaw;
+          }
+        } catch (e) {
+          raw = null;
+        }
+      }
+      if (!raw && typeof localStorage !== "undefined") {
+        raw = localStorage.getItem(MANIFEST_KEY);
+      }
       if (!raw) return null;
       var manifest = JSON.parse(raw);
       if (!manifest || !manifest.infos || !manifest.infos.length) return null;
