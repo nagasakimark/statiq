@@ -144,6 +144,23 @@
     return manifest && manifest.binaries ? manifest.binaries : null;
   }
 
+  function isCustomFontId(name) {
+    var manifest = readManifest();
+    if (manifest && manifest.files && manifest.files.indexOf(String(name)) !== -1) return true;
+    var numericId = parseInt(String(name), 10);
+    return isFinite(numericId) && numericId >= 218;
+  }
+
+  function readParentCustomFont(name) {
+    try {
+      var loader = window.parent && window.parent.__statiqLoadCustomFontBase64;
+      if (typeof loader !== "function") return "";
+      return ensureDeobfuscatedPayload(loader(String(name))) || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
   function readDiskIdSet() {
     var manifest = readManifest();
     var set = Object.create(null);
@@ -183,6 +200,15 @@
   }
 
   function fetchAndCacheFontBinary(name) {
+    var parentPayload = readParentCustomFont(name);
+    if (parentPayload) {
+      assignFontPayload(name, parentPayload);
+      return parentPayload;
+    }
+    // Custom IDs are browser-local. They can never exist in the immutable
+    // GitHub Pages /fonts directory, so do not emit a misleading 404.
+    if (isCustomFontId(name)) return "";
+
     var origin = window.location.origin;
     var urls = [origin + withBase("/fonts/" + name)];
     if (!window.__STATIQ_BASE_PATH__) {
@@ -206,6 +232,12 @@
 
   function fetchFontPayloadAsync(name) {
     if (fontStore()[name]) return Promise.resolve(fontStore()[name]);
+    var parentPayload = readParentCustomFont(name);
+    if (parentPayload) {
+      assignFontPayload(name, parentPayload);
+      return Promise.resolve(parentPayload);
+    }
+    if (isCustomFontId(name)) return Promise.resolve(null);
 
     var origin = window.location.origin;
     var urls = [origin + withBase("/fonts/" + name)];
@@ -467,6 +499,17 @@
     if (manifestBinaries && manifestBinaries[name]) {
       assignFontPayload(name, manifestBinaries[name]);
       if (cache[name]) return cache[name];
+    }
+
+    var parentPayload = readParentCustomFont(name);
+    if (parentPayload) {
+      assignFontPayload(name, parentPayload);
+      if (cache[name]) return cache[name];
+    }
+
+    if (isCustomFontId(name)) {
+      console.warn("LoadFontBase64: custom font is not ready in local storage", name);
+      return "";
     }
 
     var payload = fetchAndCacheFontBinary(name);

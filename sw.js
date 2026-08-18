@@ -76,11 +76,12 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-jjw_by3EeqdGni09pbstH";
+const CACHE = "statiq-oKO0VZAXbA8IT3Bhsf9j-";
 
 const PRECACHE = [
   withBase("/"),
   withBase("/manifest.json"),
+  withBase("/offline-core-assets.json"),
   withBase("/offline-assets.json"),
   withBase("/icons/logo.png"),
   withBase("/icons/icon-192.png"),
@@ -107,9 +108,27 @@ const PRECACHE = [
   withBase("/x2t/x2t.wasm"),
 ];
 
-async function downloadOfflineAssets(port) {
+async function verifyOfflineScope(cache, scope) {
+  if (scope !== "core") return true;
+  const probes = [
+    "/sdkjs/common/AllFonts.js",
+    "/web-apps/apps/api/documents/api.js",
+    "/sdkjs/word/sdk-all.js",
+    "/sdkjs/cell/sdk-all.js",
+    "/sdkjs/slide/sdk-all.js",
+    "/x2t/x2t.wasm",
+  ];
+  for (const path of probes) {
+    const request = new Request(new URL(withBase(path), self.location.origin));
+    if (!(await cache.match(request, { ignoreSearch: true }))) return false;
+  }
+  return true;
+}
+
+async function downloadOfflineAssets(port, requestedScope) {
+  const scope = requestedScope === "full" ? "full" : "core";
   const cache = await caches.open(CACHE);
-  const manifestUrl = withBase("/offline-assets.json");
+  const manifestUrl = withBase(scope === "full" ? "/offline-assets.json" : "/offline-core-assets.json");
   const response = await fetch(manifestUrl, { cache: "no-store" });
   if (!response.ok) throw new Error(`Offline asset manifest returned ${response.status}`);
 
@@ -118,13 +137,17 @@ async function downloadOfflineAssets(port) {
   const files = Array.isArray(manifest.files) ? manifest.files : [];
   const version = String(manifest.version || CACHE);
   const marker = new Request(
-    new URL(withBase(`/__offline_complete__/${encodeURIComponent(version)}`), self.location.origin),
+    new URL(
+      withBase(`/__offline_complete__/${scope}/${encodeURIComponent(version)}`),
+      self.location.origin,
+    ),
   );
 
-  if (await cache.match(marker)) {
+  if ((await cache.match(marker)) && (await verifyOfflineScope(cache, scope))) {
     port?.postMessage({ type: "complete", completed: files.length, total: files.length, failed: 0 });
     return;
   }
+  await cache.delete(marker);
 
   let completed = 0;
   const failures = [];
@@ -156,6 +179,12 @@ async function downloadOfflineAssets(port) {
 
   if (failures.length === 0) {
     await cache.put(marker, new Response(version));
+    if (scope === "core") {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((key) => key.startsWith("statiq-") && key !== CACHE).map((key) => caches.delete(key)),
+      );
+    }
   }
   port?.postMessage({
     type: "complete",
@@ -167,7 +196,9 @@ async function downloadOfflineAssets(port) {
 }
 
 async function cacheFirst(request, cache) {
-  const cached = await cache.match(request, { ignoreSearch: true });
+  const cached =
+    (await cache.match(request, { ignoreSearch: true })) ||
+    (await caches.match(request, { ignoreSearch: true }));
   if (cached) return cached;
   const response = await fetch(request);
   if (response.ok) await cache.put(request, response.clone());
@@ -180,7 +211,9 @@ async function networkFirst(request, cache) {
     if (response.ok) await cache.put(request, response.clone());
     return response;
   } catch {
-    const cached = await cache.match(request, { ignoreSearch: true });
+    const cached =
+      (await cache.match(request, { ignoreSearch: true })) ||
+      (await caches.match(request, { ignoreSearch: true }));
     if (cached) return cached;
     if (request.mode === "navigate") {
       const path = stripBase(new URL(request.url).pathname);
@@ -206,10 +239,7 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
+    self.clients.claim(),
   );
 });
 
@@ -217,7 +247,7 @@ self.addEventListener("message", (event) => {
   if (event.data?.type !== "CACHE_OFFLINE_ASSETS") return;
   const port = event.ports?.[0];
   event.waitUntil(
-    downloadOfflineAssets(port).catch((error) => {
+    downloadOfflineAssets(port, event.data.scope).catch((error) => {
       port?.postMessage({
         type: "error",
         message: error instanceof Error ? error.message : String(error),
@@ -228,6 +258,26 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+  if (request.method === "HEAD") {
+    const getRequest = new Request(request.url, { method: "GET" });
+    event.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        const cached =
+          (await cache.match(getRequest, { ignoreSearch: true })) ||
+          (await caches.match(getRequest, { ignoreSearch: true }));
+        if (cached) {
+          return new Response(null, { status: cached.status, headers: cached.headers });
+        }
+        try {
+          const response = await fetch(getRequest);
+          return new Response(null, { status: response.status, headers: response.headers });
+        } catch {
+          return new Response(null, { status: 504 });
+        }
+      }),
+    );
+    return;
+  }
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
