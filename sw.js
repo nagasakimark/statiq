@@ -76,14 +76,13 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-co8xDZ5J8v5iTDgarJrCY";
+const CACHE = "statiq-FIZrBjqpnXGnJQAEul6J1";
 
 // App shell only. Editor runtimes are downloaded from Settings, not on first visit.
 const PRECACHE = [
   withBase("/"),
   withBase("/manifest.json"),
-  withBase("/offline-core-assets.json"),
-  withBase("/offline-assets.json"),
+  withBase("/offline-pack.json"),
   withBase("/icons/logo.png"),
   withBase("/icons/icon-192.png"),
   withBase("/icons/icon-512.png"),
@@ -91,6 +90,10 @@ const PRECACHE = [
   withBase("/icons/excel.png"),
   withBase("/icons/powerpoint.png"),
   withBase("/editor/"),
+  withBase("/editor/word/"),
+  withBase("/editor/cell/"),
+  withBase("/editor/slide/"),
+  withBase("/editor/pdf/"),
   withBase("/settings/"),
   withBase("/comparison/"),
   withBase("/office-shims/asset-rewrite.js"),
@@ -101,98 +104,21 @@ const PRECACHE = [
   withBase("/office-shims/pwa-file-launch.js"),
 ];
 
-async function verifyOfflineScope(cache, scope) {
-  if (scope !== "core") return true;
+async function isPackComplete(cache) {
   const probes = [
-    "/sdkjs/common/AllFonts.js",
-    "/web-apps/apps/api/documents/api.js",
-    "/sdkjs/word/sdk-all.js",
-    "/sdkjs/cell/sdk-all.js",
-    "/sdkjs/slide/sdk-all.js",
-    "/x2t/x2t.wasm",
+    withBase("/__offline_complete__/core"),
+    withBase("/__offline_complete__/full"),
   ];
-  for (const path of probes) {
-    const request = new Request(new URL(withBase(path), self.location.origin));
-    if (!(await cache.match(request, { ignoreSearch: true }))) return false;
-  }
-  return true;
-}
-
-async function downloadOfflineAssets(port, requestedScope) {
-  const scope = requestedScope === "full" ? "full" : "core";
-  const cache = await caches.open(CACHE);
-  const manifestUrl = withBase(scope === "full" ? "/offline-assets.json" : "/offline-core-assets.json");
-  const response = await fetch(manifestUrl, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Offline asset manifest returned ${response.status}`);
-
-  await cache.put(new Request(new URL(manifestUrl, self.location.origin)), response.clone());
-  const manifest = await response.json();
-  const files = Array.isArray(manifest.files) ? manifest.files : [];
-  const version = String(manifest.version || CACHE);
-  const marker = new Request(
-    new URL(
-      withBase(`/__offline_complete__/${scope}/${encodeURIComponent(version)}`),
-      self.location.origin,
-    ),
-  );
-  const genericMarker = new Request(
-    new URL(withBase(`/__offline_complete__/${scope}`), self.location.origin),
-  );
-
-  if ((await cache.match(marker)) && (await verifyOfflineScope(cache, scope))) {
-    await cache.put(genericMarker, new Response(version));
-    port?.postMessage({ type: "complete", completed: files.length, total: files.length, failed: 0, version });
-    return;
-  }
-  await cache.delete(marker);
-  await cache.delete(genericMarker);
-
-  let completed = 0;
-  const failures = [];
-  const concurrency = 6;
-
-  for (let start = 0; start < files.length; start += concurrency) {
-    const batch = files.slice(start, start + concurrency);
-    await Promise.all(
-      batch.map(async (file) => {
-        const url = new URL(withBase(file), self.location.origin);
-        const request = new Request(url);
-        try {
-          if (!(await cache.match(request))) {
-            const asset = await fetch(request);
-            if (!asset.ok) throw new Error(`${asset.status}`);
-            await cache.put(request, asset);
-          }
-        } catch (error) {
-          failures.push(`${file}: ${error instanceof Error ? error.message : String(error)}`);
-        } finally {
-          completed += 1;
-        }
-      }),
-    );
-    if (completed % 30 < concurrency || completed === files.length) {
-      port?.postMessage({ type: "progress", completed, total: files.length, failed: failures.length });
+  for (const probe of probes) {
+    const request = new Request(new URL(probe, self.location.origin));
+    if (
+      (await cache.match(request, { ignoreSearch: true })) ||
+      (await caches.match(request, { ignoreSearch: true }))
+    ) {
+      return true;
     }
   }
-
-  if (failures.length === 0) {
-    await cache.put(marker, new Response(version));
-    await cache.put(genericMarker, new Response(version));
-    if (scope === "core") {
-      const keys = await caches.keys();
-      await Promise.all(
-        keys.filter((key) => key.startsWith("statiq-") && key !== CACHE).map((key) => caches.delete(key)),
-      );
-    }
-  }
-  port?.postMessage({
-    type: "complete",
-    completed,
-    total: files.length,
-    failed: failures.length,
-    errors: failures.slice(0, 20),
-    version,
-  });
+  return false;
 }
 
 async function cacheFirst(request, cache) {
@@ -263,20 +189,13 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    self.clients.claim(),
-  );
-});
-
-self.addEventListener("message", (event) => {
-  if (event.data?.type !== "CACHE_OFFLINE_ASSETS") return;
-  const port = event.ports?.[0];
-  event.waitUntil(
-    downloadOfflineAssets(port, event.data.scope).catch((error) => {
-      port?.postMessage({
-        type: "error",
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }),
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter((key) => key.startsWith("statiq-") && key !== CACHE).map((key) => caches.delete(key)),
+      );
+      await self.clients.claim();
+    })(),
   );
 });
 
@@ -308,6 +227,11 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   const path = stripBase(url.pathname);
+
+  if (path === "/offline-pack.json" || path.startsWith("/offline-packs/")) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   const aliased = rewriteAlias(path, request.referrer || "");
   if (aliased) {
@@ -341,14 +265,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (isOfficeAsset || isStaticChunk) {
+  const isBrandIcon = path.startsWith("/icons/");
+
+  if (isOfficeAsset || isStaticChunk || isBrandIcon) {
     event.respondWith(caches.open(CACHE).then((cache) => cacheFirst(request, cache)));
     return;
   }
 
   if (request.mode === "navigate" || path.endsWith(".html") || path.endsWith("/")) {
     event.respondWith(
-      caches.open(CACHE).then((cache) => staleWhileRevalidate(event, request, cache)),
+      caches.open(CACHE).then(async (cache) => {
+        if (await isPackComplete(cache)) return cacheFirst(request, cache);
+        return staleWhileRevalidate(event, request, cache);
+      }),
     );
     return;
   }
