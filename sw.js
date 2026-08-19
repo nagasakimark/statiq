@@ -76,7 +76,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-UEXRzWyT2vaRTzWVlQ3er";
+const CACHE = "statiq-co8xDZ5J8v5iTDgarJrCY";
 
 // App shell only. Editor runtimes are downloaded from Settings, not on first visit.
 const PRECACHE = [
@@ -98,6 +98,7 @@ const PRECACHE = [
   withBase("/office-shims/asc-desktop-fonts.js"),
   withBase("/office-shims/custom-fonts-merge.js"),
   withBase("/office-shims/custom-fonts-picker.js"),
+  withBase("/office-shims/pwa-file-launch.js"),
 ];
 
 async function verifyOfflineScope(cache, scope) {
@@ -134,12 +135,17 @@ async function downloadOfflineAssets(port, requestedScope) {
       self.location.origin,
     ),
   );
+  const genericMarker = new Request(
+    new URL(withBase(`/__offline_complete__/${scope}`), self.location.origin),
+  );
 
   if ((await cache.match(marker)) && (await verifyOfflineScope(cache, scope))) {
-    port?.postMessage({ type: "complete", completed: files.length, total: files.length, failed: 0 });
+    await cache.put(genericMarker, new Response(version));
+    port?.postMessage({ type: "complete", completed: files.length, total: files.length, failed: 0, version });
     return;
   }
   await cache.delete(marker);
+  await cache.delete(genericMarker);
 
   let completed = 0;
   const failures = [];
@@ -171,6 +177,7 @@ async function downloadOfflineAssets(port, requestedScope) {
 
   if (failures.length === 0) {
     await cache.put(marker, new Response(version));
+    await cache.put(genericMarker, new Response(version));
     if (scope === "core") {
       const keys = await caches.keys();
       await Promise.all(
@@ -184,6 +191,7 @@ async function downloadOfflineAssets(port, requestedScope) {
     total: files.length,
     failed: failures.length,
     errors: failures.slice(0, 20),
+    version,
   });
 }
 
@@ -207,18 +215,41 @@ async function networkFirst(request, cache) {
       (await cache.match(request, { ignoreSearch: true })) ||
       (await caches.match(request, { ignoreSearch: true }));
     if (cached) return cached;
-    if (request.mode === "navigate") {
-      const path = stripBase(new URL(request.url).pathname);
-      const routeFallback =
-        path.startsWith("/settings") ? withBase("/settings/") :
-        path.startsWith("/comparison") ? withBase("/comparison/") :
-        path.startsWith("/editor") ? withBase("/editor/") :
-        withBase("/");
-      const fallback = await cache.match(routeFallback, { ignoreSearch: true });
-      if (fallback) return fallback;
-    }
     throw new Error("offline and not cached: " + request.url);
   }
+}
+
+async function staleWhileRevalidate(event, request, cache) {
+  const cached =
+    (await cache.match(request, { ignoreSearch: true })) ||
+    (await caches.match(request, { ignoreSearch: true }));
+
+  const network = fetch(request)
+    .then(async (response) => {
+      if (response.ok) await cache.put(request, response.clone());
+      return response;
+    })
+    .catch(() => null);
+
+  if (cached) {
+    event.waitUntil(network);
+    return cached;
+  }
+
+  const fresh = await network;
+  if (fresh) return fresh;
+
+  if (request.mode === "navigate") {
+    const path = stripBase(new URL(request.url).pathname);
+    const routeFallback =
+      path.startsWith("/settings") ? withBase("/settings/") :
+      path.startsWith("/comparison") ? withBase("/comparison/") :
+      path.startsWith("/editor") ? withBase("/editor/") :
+      withBase("/");
+    const fallback = await cache.match(routeFallback, { ignoreSearch: true });
+    if (fallback) return fallback;
+  }
+  throw new Error("offline and not cached: " + request.url);
 }
 
 self.addEventListener("install", (event) => {
@@ -316,9 +347,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate" || path.endsWith(".html") || path.endsWith("/")) {
-    event.respondWith(caches.open(CACHE).then((cache) => networkFirst(request, cache)));
+    event.respondWith(
+      caches.open(CACHE).then((cache) => staleWhileRevalidate(event, request, cache)),
+    );
     return;
   }
 
-  event.respondWith(caches.open(CACHE).then((cache) => networkFirst(request, cache)));
+  event.respondWith(
+    caches.open(CACHE).then((cache) => staleWhileRevalidate(event, request, cache)),
+  );
 });

@@ -11,7 +11,7 @@
   "orientation": "any",
   "categories": ["productivity", "utilities"],
   "launch_handler": {
-    "client_mode": "focus-existing"
+    "client_mode": ["focus-existing", "navigate-new"]
   },
   "icons": [
     {
@@ -35,7 +35,7 @@
   ],
   "file_handlers": [
     {
-      "action": "./",
+      "action": "./editor/",
       "accept": {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
         "application/epub+zip": [".epub"],
