@@ -25,18 +25,14 @@ const EDITOR_ALIASES = [
 
 const THEMES_JSON_TARGET = "/web-apps/apps/common/main/resources/themes/themes.json";
 
-const APP_EDITOR_ROUTES = new Set([
-  "/editor",
-  "/editor/",
-  "/editor/word",
-  "/editor/word/",
-  "/editor/cell",
-  "/editor/cell/",
-  "/editor/slide",
-  "/editor/slide/",
-  "/editor/pdf",
-  "/editor/pdf/",
-]);
+/** Statiq app pages — never map these to ONLYOFFICE's DocumentServer aliases. */
+function isStatiqAppEditorPath(path) {
+  return (
+    path === "/editor" ||
+    path === "/editor/" ||
+    /^\/editor\/(?:word|cell|slide|pdf)\/?(?:index\.(?:html|txt))?$/.test(path)
+  );
+}
 
 function editorResourcesTarget(referrer) {
   if (referrer.includes("/presentationeditor/") || /\/editor\/slide(?:\/|$|\?)/.test(referrer)) {
@@ -62,8 +58,33 @@ function editorContextFromReferrer(referrer) {
   return referrer;
 }
 
+/** If an older SW rewrote the address bar to ONLYOFFICE's shell, bounce back. */
+const WEB_APPS_EDITOR_NAV = [
+  ["/web-apps/apps/presentationeditor/main", "/editor/slide/"],
+  ["/web-apps/apps/documenteditor/main", "/editor/word/"],
+  ["/web-apps/apps/spreadsheeteditor/main", "/editor/cell/"],
+  ["/web-apps/apps/pdfeditor/main", "/editor/pdf/"],
+];
+
+function recoverStatiqEditorNavigation(url) {
+  const id = url.searchParams.get("id");
+  if (!id) return null;
+  const keys = [...url.searchParams.keys()];
+  if (keys.some((key) => key !== "id")) return null;
+
+  const path = stripBase(url.pathname).replace(/\/index\.html$/, "").replace(/\/$/, "");
+  for (const [from, to] of WEB_APPS_EDITOR_NAV) {
+    if (path === from) {
+      const target = new URL(withBase(to), self.location.origin);
+      target.search = url.search;
+      return target.href;
+    }
+  }
+  return null;
+}
+
 function rewriteAlias(path, referrer = "") {
-  if (APP_EDITOR_ROUTES.has(path)) return null;
+  if (isStatiqAppEditorPath(path)) return null;
   if (path === "/themes.json") return THEMES_JSON_TARGET;
   if (path.startsWith("/editor/resources/")) {
     return editorResourcesTarget(editorContextFromReferrer(referrer)) + path.slice("/editor/resources/".length);
@@ -76,9 +97,10 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-FIZrBjqpnXGnJQAEul6J1";
+const CACHE = "statiq-Io5q52nmpirvVezdabl_C";
 
-// App shell only. Editor runtimes are downloaded from Settings, not on first visit.
+// App shell only. Do not precache /editor/word|cell|slide|pdf — an older SW can
+// intercept cache.add during install and store ONLYOFFICE HTML under that URL.
 const PRECACHE = [
   withBase("/"),
   withBase("/manifest.json"),
@@ -90,10 +112,6 @@ const PRECACHE = [
   withBase("/icons/excel.png"),
   withBase("/icons/powerpoint.png"),
   withBase("/editor/"),
-  withBase("/editor/word/"),
-  withBase("/editor/cell/"),
-  withBase("/editor/slide/"),
-  withBase("/editor/pdf/"),
   withBase("/settings/"),
   withBase("/comparison/"),
   withBase("/office-shims/asset-rewrite.js"),
@@ -228,12 +246,22 @@ self.addEventListener("fetch", (event) => {
 
   const path = stripBase(url.pathname);
 
+  if (request.mode === "navigate" || request.destination === "document") {
+    const recovered = recoverStatiqEditorNavigation(url);
+    if (recovered) {
+      event.respondWith(Response.redirect(recovered, 302));
+      return;
+    }
+  }
+
   if (path === "/offline-pack.json" || path.startsWith("/offline-packs/")) {
     event.respondWith(fetch(request));
     return;
   }
 
-  const aliased = rewriteAlias(path, request.referrer || "");
+  const isAppDocument =
+    request.mode === "navigate" || request.destination === "document";
+  const aliased = isAppDocument ? null : rewriteAlias(path, request.referrer || "");
   if (aliased) {
     const target = new URL(request.url);
     target.pathname = withBase(aliased);

@@ -26,16 +26,13 @@
     ["/editor/visio/", "/web-apps/apps/visioeditor/main/"],
   ];
 
-  var APP_ROUTES = {
-    "/editor/word": true,
-    "/editor/word/": true,
-    "/editor/cell": true,
-    "/editor/cell/": true,
-    "/editor/slide": true,
-    "/editor/slide/": true,
-    "/editor/pdf": true,
-    "/editor/pdf/": true,
-  };
+  function isAppEditorPath(path) {
+    return (
+      path === "/editor" ||
+      path === "/editor/" ||
+      /^\/editor\/(?:word|cell|slide|pdf)\/?(?:index\.(?:html|txt))?$/.test(path)
+    );
+  }
 
   var OFFICE_ROOT_PREFIXES = [
     "/web-apps/",
@@ -120,7 +117,7 @@
       }
       if (!path.startsWith("/")) path = "/" + path;
 
-      if (APP_ROUTES[path]) return url;
+      if (isAppEditorPath(path)) return url;
 
       for (var i = 0; i < ALIASES.length; i++) {
         var from = ALIASES[i][0];
