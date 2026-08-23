@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Statiq editor warmup</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var type = params.get("type") || "word";
+        var base = params.get("base");
+        if (base == null || base === "") {
+          var path = location.pathname;
+          var cut = path.indexOf("/office-shims/");
+          base = cut >= 0 ? path.slice(0, cut) : "";
+        }
+        var sdk = {
+          word: "/sdkjs/word/sdk-all-min.js",
+          cell: "/sdkjs/cell/sdk-all-min.js",
+          slide: "/sdkjs/slide/sdk-all-min.js",
+          pdf: "/sdkjs/pdf/src/engine/drawingfile.js",
+        }[type];
+        var app = {
+          word: "/web-apps/apps/documenteditor/main/app.js",
+          cell: "/web-apps/apps/spreadsheeteditor/main/app.js",
+          slide: "/web-apps/apps/presentationeditor/main/app.js",
+          pdf: "/web-apps/apps/pdfeditor/main/app.js",
+        }[type];
+        // Stub AMD so app.js is parsed/compiled without booting the editor.
+        window.define = function () {};
+        window.define.amd = { jQuery: true };
+
+        var scripts = ["/sdkjs/common/AllFonts.js"];
+        if (sdk) scripts.push(sdk);
+        if (app) scripts.push(app);
+
+        function load(src) {
+          return new Promise(function (resolve) {
+            var script = document.createElement("script");
+            script.src = base + src;
+            script.async = false;
+            script.onload = resolve;
+            script.onerror = resolve;
+            document.head.appendChild(script);
+          });
+        }
+
+        (async function () {
+          for (var i = 0; i < scripts.length; i++) {
+            try {
+              await load(scripts[i]);
+            } catch (error) {
+              /* parse/compile still warms V8 code cache */
+            }
+          }
+          try {
+            parent.postMessage({ type: "statiq-editor-warmup", editor: type }, "*");
+          } catch (error) {
+            /* detached frame */
+          }
+        })();
+      })();
+    </script>
+  </body>
+</html>

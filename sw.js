@@ -97,7 +97,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-VKan9IFE7aaz_MH4f3RsU";
+const CACHE = "statiq-yDio2p_DHBtNRLndAinUh";
 
 // App shell only. Do not precache /editor/word|cell|slide|pdf — an older SW can
 // intercept cache.add during install and store ONLYOFFICE HTML under that URL.
@@ -120,6 +120,8 @@ const PRECACHE = [
   withBase("/office-shims/custom-fonts-merge.js"),
   withBase("/office-shims/custom-fonts-picker.js"),
   withBase("/office-shims/pwa-file-launch.js"),
+  withBase("/office-shims/editor-page-boot.js"),
+  withBase("/office-shims/editor-warmup.html"),
 ];
 
 async function isPackComplete(cache) {
