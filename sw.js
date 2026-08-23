@@ -97,7 +97,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-Io5q52nmpirvVezdabl_C";
+const CACHE = "statiq-E23s7946ujTrLzNdzkeWa";
 
 // App shell only. Do not precache /editor/word|cell|slide|pdf — an older SW can
 // intercept cache.add during install and store ONLYOFFICE HTML under that URL.
@@ -139,14 +139,77 @@ async function isPackComplete(cache) {
   return false;
 }
 
-async function cacheFirst(request, cache) {
-  const cached =
+async function matchCached(request, cache) {
+  return (
     (await cache.match(request, { ignoreSearch: true })) ||
-    (await caches.match(request, { ignoreSearch: true }));
+    (await caches.match(request, { ignoreSearch: true }))
+  );
+}
+
+/** Next exports `/editor/slide/index.html`; navigations use `/editor/slide/?id=`. */
+async function matchHtmlRoute(request, cache) {
+  const direct = await matchCached(request, cache);
+  if (direct) return direct;
+
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const candidates = [];
+  if (path.endsWith("/")) {
+    candidates.push(`${path}index.html`);
+  } else if (!/\.[a-z0-9]+$/i.test(path)) {
+    candidates.push(`${path}/`, `${path}/index.html`);
+  } else if (path.endsWith(".html")) {
+    candidates.push(path.replace(/\/index\.html$/, "/"));
+  }
+
+  for (const candidate of candidates) {
+    const hit = await matchCached(new Request(new URL(candidate, url.origin).href), cache);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function navigationFallbackResponse(url) {
+  return new Response("Offline", {
+    status: 503,
+    statusText: "Offline",
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+async function cacheFirst(request, cache) {
+  const isDocument =
+    request.mode === "navigate" || request.destination === "document";
+  const cached = isDocument
+    ? await matchHtmlRoute(request, cache)
+    : await matchCached(request, cache);
   if (cached) return cached;
-  const response = await fetch(request);
-  if (response.ok) await cache.put(request, response.clone());
-  return response;
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      try {
+        await cache.put(request, response.clone());
+      } catch {
+        /* quota or uncacheable request */
+      }
+    }
+    return response;
+  } catch (error) {
+    if (isDocument) {
+      const path = stripBase(new URL(request.url).pathname);
+      const routeFallback =
+        path.startsWith("/settings") ? withBase("/settings/") :
+        path.startsWith("/comparison") ? withBase("/comparison/") :
+        path.startsWith("/editor") ? withBase("/editor/") :
+        withBase("/");
+      const fallback =
+        (await matchHtmlRoute(new Request(new URL(routeFallback, self.location.origin).href), cache)) ||
+        (await matchHtmlRoute(new Request(new URL(withBase("/"), self.location.origin).href), cache));
+      if (fallback) return fallback;
+      return navigationFallbackResponse(request.url);
+    }
+    throw error;
+  }
 }
 
 async function networkFirst(request, cache) {
@@ -164,13 +227,21 @@ async function networkFirst(request, cache) {
 }
 
 async function staleWhileRevalidate(event, request, cache) {
-  const cached =
-    (await cache.match(request, { ignoreSearch: true })) ||
-    (await caches.match(request, { ignoreSearch: true }));
+  const isDocument =
+    request.mode === "navigate" || request.destination === "document";
+  const cached = isDocument
+    ? await matchHtmlRoute(request, cache)
+    : await matchCached(request, cache);
 
   const network = fetch(request)
     .then(async (response) => {
-      if (response.ok) await cache.put(request, response.clone());
+      if (response.ok) {
+        try {
+          await cache.put(request, response.clone());
+        } catch {
+          /* quota or uncacheable request */
+        }
+      }
       return response;
     })
     .catch(() => null);
@@ -183,17 +254,23 @@ async function staleWhileRevalidate(event, request, cache) {
   const fresh = await network;
   if (fresh) return fresh;
 
-  if (request.mode === "navigate") {
+  if (isDocument) {
     const path = stripBase(new URL(request.url).pathname);
     const routeFallback =
       path.startsWith("/settings") ? withBase("/settings/") :
       path.startsWith("/comparison") ? withBase("/comparison/") :
       path.startsWith("/editor") ? withBase("/editor/") :
       withBase("/");
-    const fallback = await cache.match(routeFallback, { ignoreSearch: true });
+    const fallback =
+      (await matchHtmlRoute(new Request(new URL(routeFallback, self.location.origin).href), cache)) ||
+      (await matchHtmlRoute(new Request(new URL(withBase("/"), self.location.origin).href), cache));
     if (fallback) return fallback;
+    return navigationFallbackResponse(request.url);
   }
-  throw new Error("offline and not cached: " + request.url);
+  return new Response("Offline", {
+    status: 503,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 self.addEventListener("install", (event) => {
