@@ -503,12 +503,14 @@ window["g_fonts_selection_bin"] = "4AAAAJsAAAALAAAARGVqYVZ1IFNhbnMAAAAANAAAAC91c
 
     var jsVersion = window["__all_fonts_js_version__"] || 0;
     if (selection.version !== jsVersion) {
-      console.warn(
-        "Custom font selection version mismatch",
-        selection.version,
-        "!=",
-        jsVersion
-      );
+      if (jsVersion !== 0) {
+        console.warn(
+          "Custom font selection version mismatch",
+          selection.version,
+          "!=",
+          jsVersion
+        );
+      }
       return;
     }
 
