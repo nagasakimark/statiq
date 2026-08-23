@@ -329,25 +329,11 @@
       }
     }
 
-    // Network + sprite work used to run here synchronously and stall
-    // "Loading Presentation/Document". Seed from localStorage only; fetch later.
+    prewarmManifestFonts();
+    preloadCriticalFontsAsync();
   }
 
   hydrateSeedCache();
-
-  function deferHeavyFontWork() {
-    preloadCriticalFontsAsync();
-    try {
-      generateFontSprites();
-    } catch (e) {
-      console.warn("Custom font sprite bootstrap failed", e);
-    }
-  }
-  if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(deferHeavyFontWork, { timeout: 4000 });
-  } else {
-    window.setTimeout(deferHeavyFontWork, 1);
-  }
 
   // Cache manifest for AllFonts.js merge (runs later via require). Same window.
   try {
@@ -502,6 +488,12 @@
     });
   }
 
+  try {
+    generateFontSprites();
+  } catch (e) {
+    console.warn("Custom font sprite bootstrap failed", e);
+  }
+
   function loadFontBase64(name) {
     if (!name) return "";
     var cache = fontStore();
@@ -617,46 +609,6 @@
     if (!file) return "";
     return String(file).replace(/^media\//, "");
   };
-  // loadDocument calls these before the parent can inject the full desktop API.
-  existing.SetDocumentName = existing.SetDocumentName || noop;
-  existing.onDocumentContentReady = existing.onDocumentContentReady || noop;
-  existing.SetAdvancedOptions = existing.SetAdvancedOptions || noop;
-  existing.LocalFileGetOpenChangesCount = existing.LocalFileGetOpenChangesCount || function () {
-    return 0;
-  };
-  existing.LocalFileGetSaved = existing.LocalFileGetSaved || function () {
-    return true;
-  };
-  existing.LocalFileSave = existing.LocalFileSave || noop;
-  existing.OnSave = existing.OnSave || noop;
-  existing.onDocumentModifiedChanged = existing.onDocumentModifiedChanged || noop;
-  existing.LoadJS = existing.LoadJS || noop;
-  existing.GetOpenedFile = existing.GetOpenedFile || noop;
-  existing.sendSystemMessage = existing.sendSystemMessage || noop;
-  existing.CallInAllWindows = existing.CallInAllWindows || noop;
-  existing.buildCryptedStart = existing.buildCryptedStart || noop;
-  existing.buildCryptedEnd = existing.buildCryptedEnd || noop;
-  existing.OpenFileCrypt = existing.OpenFileCrypt || noop;
-  existing.NativeViewerOpen = existing.NativeViewerOpen || noop;
-  existing.getEngineVersion = existing.getEngineVersion || function () {
-    return "9.3.0";
-  };
-  existing.isSupportNetworkFunctionality = existing.isSupportNetworkFunctionality || function () {
-    return false;
-  };
-  existing.isSupportMacroses = existing.isSupportMacroses || function () {
-    return false;
-  };
-  existing.IsSignaturesSupport = existing.IsSignaturesSupport || function () {
-    return false;
-  };
-  existing.IsProtectionSupport = existing.IsProtectionSupport || function () {
-    return false;
-  };
-  existing.isBlockchainSupport = existing.isBlockchainSupport || function () {
-    return false;
-  };
-  if (existing.CryptoMode == null) existing.CryptoMode = 0;
 
   wireDesktopShell(existing);
 })();
