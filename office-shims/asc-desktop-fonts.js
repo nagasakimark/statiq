@@ -329,11 +329,25 @@
       }
     }
 
-    prewarmManifestFonts();
-    preloadCriticalFontsAsync();
+    // Network + sprite work used to run here synchronously and stall
+    // "Loading Presentation/Document". Seed from localStorage only; fetch later.
   }
 
   hydrateSeedCache();
+
+  function deferHeavyFontWork() {
+    preloadCriticalFontsAsync();
+    try {
+      generateFontSprites();
+    } catch (e) {
+      console.warn("Custom font sprite bootstrap failed", e);
+    }
+  }
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(deferHeavyFontWork, { timeout: 4000 });
+  } else {
+    window.setTimeout(deferHeavyFontWork, 1);
+  }
 
   // Cache manifest for AllFonts.js merge (runs later via require). Same window.
   try {
@@ -486,12 +500,6 @@
         img.src = withBase("/sdkjs/common/Images/fonts_thumbnail" + ea + cfg.suffix + ".png");
       });
     });
-  }
-
-  try {
-    generateFontSprites();
-  } catch (e) {
-    console.warn("Custom font sprite bootstrap failed", e);
   }
 
   function loadFontBase64(name) {
