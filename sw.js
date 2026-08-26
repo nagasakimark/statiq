@@ -97,7 +97,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-T67gu3WZiNdR-ibsfUlKv";
+const CACHE = "statiq-ipSxLA_yY79tfxWLSxSc5";
 
 const PRECACHE = [
   withBase("/"),
