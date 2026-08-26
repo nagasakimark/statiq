@@ -1286,7 +1286,7 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
         iframe.allowFullscreen = true;
         iframe.setAttribute("allowfullscreen",""); // for IE11
         iframe.setAttribute("onmousewheel",""); // for Safari on Mac
-        iframe.setAttribute("allow", "autoplay; camera; microphone; display-capture; clipboard-write;");
+        iframe.setAttribute("allow", "autoplay; camera; microphone; display-capture; clipboard-read; clipboard-write;");
 
 		if (config.type == "mobile")
 		{

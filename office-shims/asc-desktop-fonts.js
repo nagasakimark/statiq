@@ -1,6 +1,27 @@
 (function () {
   "use strict";
 
+  // OnlyOffice writes clipboard HTML into #asc_pasteFrame with
+  // sandbox="allow-same-origin" (no allow-scripts). Chrome treats
+  // document.write() as script execution and blocks it, so image paste
+  // never reaches the editor.
+  (function patchPasteFrameSandbox() {
+    if (window.__statiqPasteSandboxPatched) return;
+    window.__statiqPasteSandboxPatched = true;
+    if (typeof HTMLIFrameElement === "undefined") return;
+    var proto = HTMLIFrameElement.prototype;
+    var originalSet = proto.setAttribute;
+    proto.setAttribute = function (name, value) {
+      if (String(name).toLowerCase() === "sandbox") {
+        var flags = String(value || "");
+        if (/\ballow-same-origin\b/.test(flags) && !/\ballow-scripts\b/.test(flags)) {
+          value = flags + " allow-scripts";
+        }
+      }
+      return originalSet.call(this, name, value);
+    };
+  })();
+
   function withBase(path) {
     var base = window.__STATIQ_BASE_PATH__ || "";
     if (!path) return base || "/";
