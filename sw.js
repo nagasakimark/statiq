@@ -97,7 +97,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-O-yie7T8P__b_VCERvISt";
+const CACHE = "statiq-taeJluFsVBxPxhQUGN27H";
 
 // App shell only. Do not precache /editor/word|cell|slide|pdf — an older SW can
 // intercept cache.add during install and store ONLYOFFICE HTML under that URL.

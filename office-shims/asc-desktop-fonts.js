@@ -609,6 +609,17 @@
     if (!file) return "";
     return String(file).replace(/^media\//, "");
   };
+  existing.GetImageOriginalSize = existing.GetImageOriginalSize || function () {
+    return { W: 0, H: 0 };
+  };
+  existing.GetImageFormat = existing.GetImageFormat || function (path) {
+    var match = String(path || "").match(/\.([a-z0-9]+)(?:$|[?#])/i);
+    return match ? match[1].toLowerCase().replace("jpeg", "jpg") : "png";
+  };
+  existing.DownloadFiles = existing.DownloadFiles || function (urls, _unused, callback) {
+    var finish = typeof callback === "function" ? callback : typeof _unused === "function" ? _unused : null;
+    if (finish) finish({});
+  };
 
   wireDesktopShell(existing);
 })();
