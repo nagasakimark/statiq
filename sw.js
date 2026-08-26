@@ -97,10 +97,8 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-TCX0BQGEVjT3kvDMaHfCM";
+const CACHE = "statiq-T67gu3WZiNdR-ibsfUlKv";
 
-// App shell only. Do not precache /editor/word|cell|slide|pdf — an older SW can
-// intercept cache.add during install and store ONLYOFFICE HTML under that URL.
 const PRECACHE = [
   withBase("/"),
   withBase("/manifest.json"),
@@ -112,6 +110,10 @@ const PRECACHE = [
   withBase("/icons/excel.png"),
   withBase("/icons/powerpoint.png"),
   withBase("/editor/"),
+  withBase("/editor/word/"),
+  withBase("/editor/cell/"),
+  withBase("/editor/slide/"),
+  withBase("/editor/pdf/"),
   withBase("/settings/"),
   withBase("/comparison/"),
   withBase("/office-shims/asset-rewrite.js"),
@@ -129,10 +131,7 @@ async function isPackComplete(cache) {
   ];
   for (const probe of probes) {
     const request = new Request(new URL(probe, self.location.origin));
-    if (
-      (await cache.match(request, { ignoreSearch: true })) ||
-      (await caches.match(request, { ignoreSearch: true }))
-    ) {
+    if (await cache.match(request, { ignoreSearch: true })) {
       return true;
     }
   }
@@ -169,7 +168,7 @@ async function matchHtmlRoute(request, cache) {
   return null;
 }
 
-function navigationFallbackResponse(url) {
+function navigationFallbackResponse(_url) {
   return new Response("Offline", {
     status: 503,
     statusText: "Offline",
@@ -177,12 +176,43 @@ function navigationFallbackResponse(url) {
   });
 }
 
+function isDocumentRequest(request) {
+  return (
+    request.mode === "navigate" ||
+    request.destination === "document" ||
+    request.destination === "iframe"
+  );
+}
+
+async function appShellFallback(request, cache) {
+  const path = stripBase(new URL(request.url).pathname);
+  if (
+    !path.startsWith("/editor") &&
+    !path.startsWith("/settings") &&
+    !path.startsWith("/comparison") &&
+    path !== "/"
+  ) {
+    return null;
+  }
+  const routeFallback =
+    path.startsWith("/settings") ? withBase("/settings/") :
+    path.startsWith("/comparison") ? withBase("/comparison/") :
+    path.startsWith("/editor") ? withBase("/editor/") :
+    withBase("/");
+  return (
+    (await matchHtmlRoute(new Request(new URL(routeFallback, self.location.origin).href), cache)) ||
+    (await matchHtmlRoute(new Request(new URL(withBase("/"), self.location.origin).href), cache))
+  );
+}
+
+async function lookupCached(request, cache) {
+  return isDocumentRequest(request)
+    ? matchHtmlRoute(request, cache)
+    : matchCached(request, cache);
+}
+
 async function cacheFirst(request, cache) {
-  const isDocument =
-    request.mode === "navigate" || request.destination === "document";
-  const cached = isDocument
-    ? await matchHtmlRoute(request, cache)
-    : await matchCached(request, cache);
+  const cached = await lookupCached(request, cache);
   if (cached) return cached;
   try {
     const response = await fetch(request);
@@ -192,46 +222,44 @@ async function cacheFirst(request, cache) {
       } catch {
         /* quota or uncacheable request */
       }
+      return response;
     }
-    return response;
-  } catch (error) {
-    if (isDocument) {
-      const path = stripBase(new URL(request.url).pathname);
-      const routeFallback =
-        path.startsWith("/settings") ? withBase("/settings/") :
-        path.startsWith("/comparison") ? withBase("/comparison/") :
-        path.startsWith("/editor") ? withBase("/editor/") :
-        withBase("/");
-      const fallback =
-        (await matchHtmlRoute(new Request(new URL(routeFallback, self.location.origin).href), cache)) ||
-        (await matchHtmlRoute(new Request(new URL(withBase("/"), self.location.origin).href), cache));
-      if (fallback) return fallback;
-      return navigationFallbackResponse(request.url);
-    }
-    throw error;
+  } catch {
+    /* GitHub Pages 503 / dropped connection */
   }
+  const fallback = (await lookupCached(request, cache)) || (await appShellFallback(request, cache));
+  if (fallback) return fallback;
+  if (isDocumentRequest(request)) return navigationFallbackResponse(request.url);
+  return new Response("Offline", {
+    status: 503,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 async function networkFirst(request, cache) {
   try {
     const response = await fetch(request);
-    if (response.ok) await cache.put(request, response.clone());
-    return response;
+    if (response.ok) {
+      try {
+        await cache.put(request, response.clone());
+      } catch {
+        /* quota or uncacheable request */
+      }
+      return response;
+    }
   } catch {
-    const cached =
-      (await cache.match(request, { ignoreSearch: true })) ||
-      (await caches.match(request, { ignoreSearch: true }));
-    if (cached) return cached;
-    throw new Error("offline and not cached: " + request.url);
+    /* offline */
   }
+  const cached = await matchCached(request, cache);
+  if (cached) return cached;
+  return new Response("Offline", {
+    status: 503,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 async function staleWhileRevalidate(event, request, cache) {
-  const isDocument =
-    request.mode === "navigate" || request.destination === "document";
-  const cached = isDocument
-    ? await matchHtmlRoute(request, cache)
-    : await matchCached(request, cache);
+  const cached = await lookupCached(request, cache);
 
   const network = fetch(request)
     .then(async (response) => {
@@ -241,8 +269,9 @@ async function staleWhileRevalidate(event, request, cache) {
         } catch {
           /* quota or uncacheable request */
         }
+        return response;
       }
-      return response;
+      return null;
     })
     .catch(() => null);
 
@@ -254,23 +283,48 @@ async function staleWhileRevalidate(event, request, cache) {
   const fresh = await network;
   if (fresh) return fresh;
 
-  if (isDocument) {
-    const path = stripBase(new URL(request.url).pathname);
-    const routeFallback =
-      path.startsWith("/settings") ? withBase("/settings/") :
-      path.startsWith("/comparison") ? withBase("/comparison/") :
-      path.startsWith("/editor") ? withBase("/editor/") :
-      withBase("/");
-    const fallback =
-      (await matchHtmlRoute(new Request(new URL(routeFallback, self.location.origin).href), cache)) ||
-      (await matchHtmlRoute(new Request(new URL(withBase("/"), self.location.origin).href), cache));
-    if (fallback) return fallback;
-    return navigationFallbackResponse(request.url);
-  }
+  const fallback = await appShellFallback(request, cache);
+  if (fallback) return fallback;
+  if (isDocumentRequest(request)) return navigationFallbackResponse(request.url);
   return new Response("Offline", {
     status: 503,
     headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
+}
+
+async function cacheHasAppShell(name) {
+  try {
+    const cache = await caches.open(name);
+    const home = await matchHtmlRoute(
+      new Request(new URL(withBase("/"), self.location.origin).href),
+      cache,
+    );
+    return Boolean(home);
+  } catch {
+    return false;
+  }
+}
+
+async function pruneStaleCaches({ keepPreviousAppCache }) {
+  const keys = await caches.keys();
+  const others = keys.filter((key) => key.startsWith("statiq-") && key !== CACHE);
+  const previous = [];
+  for (const key of others) {
+    if (keepPreviousAppCache && (await cacheHasAppShell(key))) {
+      previous.push(key);
+      continue;
+    }
+    await caches.delete(key);
+  }
+  if (keepPreviousAppCache && previous.length > 1) {
+    const ranked = [];
+    for (const key of previous) {
+      const cache = await caches.open(key);
+      ranked.push({ key, complete: await isPackComplete(cache) });
+    }
+    ranked.sort((a, b) => Number(b.complete) - Number(a.complete));
+    await Promise.all(ranked.slice(1).map(({ key }) => caches.delete(key)));
+  }
 }
 
 self.addEventListener("install", (event) => {
@@ -285,13 +339,16 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      const keys = await caches.keys();
-      await Promise.all(
-        keys.filter((key) => key.startsWith("statiq-") && key !== CACHE).map((key) => caches.delete(key)),
-      );
+      const cache = await caches.open(CACHE);
+      await pruneStaleCaches({ keepPreviousAppCache: !(await isPackComplete(cache)) });
       await self.clients.claim();
     })(),
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "statiq-pack-complete") return;
+  event.waitUntil(pruneStaleCaches({ keepPreviousAppCache: false }));
 });
 
 self.addEventListener("fetch", (event) => {
@@ -332,7 +389,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (path === "/offline-pack.json" || path.startsWith("/offline-packs/")) {
-    event.respondWith(fetch(request));
+    event.respondWith(
+      fetch(request).catch(
+        () =>
+          new Response("Offline", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          }),
+      ),
+    );
     return;
   }
 
