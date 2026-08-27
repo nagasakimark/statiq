@@ -399,12 +399,23 @@
 
     // Keep one slot per manifest.infos entry so row index == stockRows + infoIndex
     // matches SDK imgidx (position in concatenated __fonts_infos).
+    // files[] is one id per uploaded face; infos[] is one row per family, so
+    // files[i] is the wrong binary once a family has Regular/Bold/Italic/BoldItalic.
     var entries = [];
     for (var i = 0; i < manifest.infos.length; i++) {
-      var family = (manifest.infos[i] && manifest.infos[i][0]) || "";
+      var info = manifest.infos[i] || [];
+      var family = info[0] || "";
+      var regular = info[1];
+      var fileId = manifest.files[i];
+      if (typeof regular === "number" && regular >= 0 && manifest.files && manifest.files.length) {
+        var asStr = String(regular);
+        var padded = asStr.length >= 3 ? asStr : ("000" + asStr).slice(-3);
+        if (manifest.files.indexOf(asStr) >= 0) fileId = asStr;
+        else if (manifest.files.indexOf(padded) >= 0) fileId = padded;
+      }
       entries.push({
         family: family,
-        fileId: manifest.files[i],
+        fileId: fileId,
         infoIndex: i,
       });
     }

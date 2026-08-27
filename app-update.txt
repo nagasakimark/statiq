@@ -1,0 +1,14 @@
+# Statiq Office update notice
+#
+# Offline installs fetch this file from the live site on first load.
+# Change the version line whenever you want those devices to prompt.
+# Everything after the version line is shown as the changelog.
+
+2026-08-28
+
+Tab drafts and unsaved-close warning, font fixes
+- Fixed an issue where font selection would choose the wrong font
+- Switching tabs or going home keeps a cached copy of the document you were editing
+- Closing a tab with unsaved changes asks first
+- Added the update feature so even offline editors will check for new bug fixes
+- Open Settings and redownload the editor again to download this version

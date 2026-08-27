@@ -97,7 +97,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-ipSxLA_yY79tfxWLSxSc5";
+const CACHE = "statiq-F4Enx8rVAQRP-EmhdS5if";
 
 const PRECACHE = [
   withBase("/"),
@@ -388,7 +388,12 @@ self.addEventListener("fetch", (event) => {
     }
   }
 
-  if (path === "/offline-pack.json" || path.startsWith("/offline-packs/")) {
+  // Always hit the network so offline devices can see a newer changelog / pack.
+  if (
+    path === "/offline-pack.json" ||
+    path === "/app-update.txt" ||
+    path.startsWith("/offline-packs/")
+  ) {
     event.respondWith(
       fetch(request).catch(
         () =>

@@ -55,6 +55,45 @@
     return names;
   }
 
+  function thumbnailIndexForFamily(family, fallback) {
+    try {
+      var families = window.AscFonts && window.AscFonts.$4a;
+      if (families) {
+        for (var fi = 0; fi < families.length; fi++) {
+          if (families[fi] && families[fi].za === family && typeof families[fi].QSh === "number") {
+            return families[fi].QSh;
+          }
+        }
+      }
+    } catch (e) {}
+    return fallback;
+  }
+
+  function stableFontId(family) {
+    var safe = encodeURIComponent(String(family)).replace(/[!'()*~]/g, function (ch) {
+      return "_" + ch.charCodeAt(0).toString(16);
+    }).replace(/%/g, "_");
+    return "statiq-font-" + safe;
+  }
+
+  function dedupeFontsByName(collection) {
+    if (!collection || typeof collection.each !== "function" || typeof collection.remove !== "function") {
+      return 0;
+    }
+    var seen = Object.create(null);
+    var extras = [];
+    collection.each(function (model) {
+      var n = model.get && model.get("name");
+      if (!n) return;
+      if (seen[n]) extras.push(model);
+      else seen[n] = true;
+    });
+    for (var i = 0; i < extras.length; i++) {
+      collection.remove(extras[i]);
+    }
+    return extras.length;
+  }
+
   function appendCustomFonts(collection) {
     var manifest = readManifest();
     if (!manifest || !collection || typeof collection.add !== "function") return 0;
@@ -64,15 +103,15 @@
 
     var existing = collectionNames(collection);
     var toAdd = [];
-    var ui = Common.UI;
 
     for (var i = 0; i < manifest.infos.length; i++) {
       var family = manifest.infos[i] && manifest.infos[i][0];
       if (!family || existing[family]) continue;
+      existing[family] = true;
       toAdd.push({
-        id: ui && ui.getId ? ui.getId() : "statiq-font-" + i,
+        id: stableFontId(family),
         name: family,
-        imgidx: STOCK_FONT_ROWS + i,
+        imgidx: thumbnailIndexForFamily(family, STOCK_FONT_ROWS + i),
         type: 1,
       });
     }
@@ -92,10 +131,17 @@
 
     nc.trigger = function (event) {
       if (event === "fonts:load" && arguments.length > 1) {
-        var added = appendCustomFonts(arguments[1]);
+        var col = arguments[1];
+        var added = appendCustomFonts(col);
+        var removed = dedupeFontsByName(col);
         if (added > 0) {
           try {
             console.info("Statiq: added " + added + " custom font(s) to picker");
+          } catch (e) {}
+        }
+        if (removed > 0) {
+          try {
+            console.info("Statiq: removed " + removed + " duplicate font picker row(s)");
           } catch (e) {}
         }
       }
@@ -121,7 +167,8 @@
     if (!col || !col.length) return;
 
     var added = appendCustomFonts(col);
-    if (added > 0 && Common.NotificationCenter) {
+    var removed = dedupeFontsByName(col);
+    if ((added > 0 || removed > 0) && Common.NotificationCenter) {
       Common.NotificationCenter.trigger("fonts:load", col);
       try {
         Common.NotificationCenter.trigger("statiq:fonts-sprite-ready");
