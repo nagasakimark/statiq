@@ -12,6 +12,16 @@ function stripBase(pathname) {
   return pathname;
 }
 
+/** Collapse /statiq/statiq/settings/ from links that already included basePath. */
+function canonicalizePathname(pathname) {
+  if (!SW_BASE) return pathname;
+  const doubled = `${SW_BASE}${SW_BASE}`;
+  if (pathname === doubled || pathname.startsWith(`${doubled}/`)) {
+    return `${SW_BASE}${pathname.slice(doubled.length)}` || SW_BASE;
+  }
+  return pathname;
+}
+
 // DocumentServer-style aliases used by ONLYOFFICE assets (api.js loader, svg
 // icon sprites, chart editor) that would otherwise 404 on a static host.
 const EDITOR_ALIASES = [
@@ -97,7 +107,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-F4Enx8rVAQRP-EmhdS5if";
+const CACHE = "statiq-cZWdzB-SH6M4byD01HvRH";
 
 const PRECACHE = [
   withBase("/"),
@@ -377,6 +387,13 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  const canonicalPath = canonicalizePathname(url.pathname);
+  if (canonicalPath !== url.pathname) {
+    url.pathname = canonicalPath;
+    event.respondWith(Response.redirect(url.href, 302));
+    return;
+  }
 
   const path = stripBase(url.pathname);
 
