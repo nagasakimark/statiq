@@ -5,11 +5,9 @@
 # you want those devices to prompt. You can ship several times in one day.
 # Everything after the version line is shown as the changelog.
 
-4
+5
 
-Tab drafts, unsaved-close warning, and update prompt
-- Fixed an issue where font selection would choose the wrong font
-- Switching tabs or going home keeps a cached copy of the document you were editing
-- Closing a tab with unsaved changes asks first
-- Offline editors check the site for new versions and show this changelog
-- Open Settings and tap Save editors again to download this version
+Fixed EMF file crash, PDF loading
+
+- Fixed a rare crash when opening a powerpoint file that uses .emf vector graphics
+- Fixed PDF loading cause I broke it

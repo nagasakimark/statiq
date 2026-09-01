@@ -605,6 +605,7 @@
   // custom-font rows) is used. Stock .bin sprites only contain 144 rows.
   existing.isSupportBinaryFontsSprite = false;
   existing.CreateEditorApi = existing.CreateEditorApi || noop;
+  existing.SetDocumentName = existing.SetDocumentName || noop;
   existing.SetFullscreen = existing.SetFullscreen || noop;
   existing.startReporter = existing.startReporter || noop;
   existing.endReporter = existing.endReporter || noop;
