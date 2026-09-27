@@ -39,12 +39,34 @@
   }
 
   function arrayBufferToBase64(buffer) {
+    // Chunked: per-byte concatenation of a video took minutes and GBs of RAM.
     var bytes = new Uint8Array(buffer);
-    var binary = "";
-    for (var i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    var parts = [];
+    for (var i = 0; i < bytes.length; i += 0x8000) {
+      parts.push(String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 0x8000, bytes.length))));
     }
-    return btoa(binary);
+    return btoa(parts.join(""));
+  }
+
+  /**
+   * Hand a picked file to the host as-is when it supports Blobs (Statiq's
+   * asc_writeFileBlob): no ArrayBuffer read, no base64 — the video stays a
+   * single Blob. Falls back to the stock base64 asc_writeFile.
+   */
+  function writeMediaFile(path, file) {
+    var host = null;
+    try {
+      host = typeof window.asc_writeFileBlob === "function" ? window : null;
+    } catch (e) {
+      host = null;
+    }
+    if (host) {
+      window.asc_writeFileBlob(path, file);
+      return Promise.resolve();
+    }
+    return readFileAsArrayBuffer(file).then(function (buffer) {
+      writeFile(path, arrayBufferToBase64(buffer));
+    });
   }
 
   function extractVideoPoster(file) {
@@ -495,10 +517,12 @@
         var posterPath = "media/" + base + ".jpg";
         var videoPath = "media/" + base + "." + ext;
 
-        Promise.all([extractVideoPoster(file), readFileAsArrayBuffer(file)])
-          .then(function (results) {
-            writeFile(posterPath, arrayBufferToBase64(results[0]));
-            writeFile(videoPath, arrayBufferToBase64(results[1]));
+        extractVideoPoster(file)
+          .then(function (poster) {
+            writeFile(posterPath, arrayBufferToBase64(poster));
+            return writeMediaFile(videoPath, file);
+          })
+          .then(function () {
             return waitForPosterUrl(posterPath);
           })
           .then(function () {
@@ -521,10 +545,9 @@
         var pngBase64 =
           "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
-        readFileAsArrayBuffer(file)
-          .then(function (audioBuffer) {
-            writeFile(iconPath, pngBase64);
-            writeFile(audioPath, arrayBufferToBase64(audioBuffer));
+        writeFile(iconPath, pngBase64);
+        writeMediaFile(audioPath, file)
+          .then(function () {
             return waitForPosterUrl(iconPath);
           })
           .then(function () {

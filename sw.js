@@ -107,7 +107,7 @@ function rewriteAlias(path, referrer = "") {
   return null;
 }
 
-const CACHE = "statiq-UNw5FK2Kq82qIzb1iE-HT";
+const CACHE = "statiq-KK20635LJ5IWlCto5P4up";
 
 const PRECACHE = [
   withBase("/"),
@@ -132,6 +132,7 @@ const PRECACHE = [
   withBase("/office-shims/custom-fonts-merge.js"),
   withBase("/office-shims/custom-fonts-picker.js"),
   withBase("/office-shims/pwa-file-launch.js"),
+  withBase("/office-shims/x2t-worker.js"),
 ];
 
 async function isPackComplete(cache) {
@@ -219,6 +220,41 @@ async function lookupCached(request, cache) {
   return isDocumentRequest(request)
     ? matchHtmlRoute(request, cache)
     : matchCached(request, cache);
+}
+
+/**
+ * Small, frequently-changed Statiq shims: serve this version's cached copy and
+ * refresh it in the background. Unlike cacheFirst, a copy left in an older
+ * cache generation is only used when the network is unavailable — otherwise a
+ * fixed shim could stay stale until that old cache happened to be pruned.
+ */
+async function freshShim(event, request, cache) {
+  const own = await cache.match(request, { ignoreSearch: true });
+  const network = fetch(request)
+    .then(async (response) => {
+      if (response.ok) {
+        try {
+          await cache.put(request, response.clone());
+        } catch {
+          /* quota */
+        }
+        return response;
+      }
+      return null;
+    })
+    .catch(() => null);
+  if (own) {
+    event.waitUntil(network);
+    return own;
+  }
+  const fresh = await network;
+  if (fresh) return fresh;
+  const older = await caches.match(request, { ignoreSearch: true });
+  if (older) return older;
+  return new Response("Offline", {
+    status: 503,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 async function cacheFirst(request, cache) {
@@ -458,6 +494,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   const isBrandIcon = path.startsWith("/icons/");
+
+  if (path.startsWith("/office-shims/")) {
+    event.respondWith(caches.open(CACHE).then((cache) => freshShim(event, request, cache)));
+    return;
+  }
 
   if (isOfficeAsset || isStaticChunk || isBrandIcon) {
     event.respondWith(caches.open(CACHE).then((cache) => cacheFirst(request, cache)));

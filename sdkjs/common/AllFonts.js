@@ -391,7 +391,9 @@ window["g_fonts_selection_bin"] = "4AAAAJsAAAALAAAARGVqYVZ1IFNhbnMAAAAANAAAAC91c
     return (
       (bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0) ||
       (bytes[0] === 0x4f && bytes[1] === 0x54 && bytes[2] === 0x54 && bytes[3] === 0x4f) ||
-      (bytes[0] === 0x74 && bytes[1] === 0x72 && bytes[2] === 0x75 && bytes[3] === 0x65)
+      (bytes[0] === 0x74 && bytes[1] === 0x72 && bytes[2] === 0x75 && bytes[3] === 0x65) ||
+      // "ttcf" — TrueType Collection (CJK faces such as WenQuanYi / AR PL UKai)
+      (bytes[0] === 0x74 && bytes[1] === 0x74 && bytes[2] === 0x63 && bytes[3] === 0x66)
     );
   }
 
@@ -414,11 +416,14 @@ window["g_fonts_selection_bin"] = "4AAAAJsAAAALAAAARGVqYVZ1IFNhbnMAAAAANAAAAC91c
   }
 
   function bytesToBase64(bytes) {
-    var binary = "";
-    for (var i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    // Chunked: per-byte string concatenation took seconds (and hundreds of MB)
+    // for the 17 MB CJK collections on a Chromebook.
+    var parts = [];
+    var chunk = 0x8000;
+    for (var i = 0; i < bytes.length; i += chunk) {
+      parts.push(String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length))));
     }
-    return btoa(binary);
+    return btoa(parts.join(""));
   }
 
   function ensurePayload(payload) {

@@ -75,11 +75,14 @@
   }
 
   function bytesToBase64(bytes) {
-    var binary = "";
-    for (var i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    // Chunked: per-byte string concatenation took seconds (and hundreds of MB)
+    // for the 17 MB CJK collections on a Chromebook.
+    var parts = [];
+    var chunk = 0x8000;
+    for (var i = 0; i < bytes.length; i += chunk) {
+      parts.push(String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length))));
     }
-    return btoa(binary);
+    return btoa(parts.join(""));
   }
 
   function isLikelyOpenTypeFontBytes(bytes) {
@@ -87,7 +90,9 @@
     return (
       (bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0) ||
       (bytes[0] === 0x4f && bytes[1] === 0x54 && bytes[2] === 0x54 && bytes[3] === 0x4f) ||
-      (bytes[0] === 0x74 && bytes[1] === 0x72 && bytes[2] === 0x75 && bytes[3] === 0x65)
+      (bytes[0] === 0x74 && bytes[1] === 0x72 && bytes[2] === 0x75 && bytes[3] === 0x65) ||
+      // "ttcf" — TrueType Collection (CJK faces such as WenQuanYi / AR PL UKai)
+      (bytes[0] === 0x74 && bytes[1] === 0x74 && bytes[2] === 0x63 && bytes[3] === 0x66)
     );
   }
 
@@ -113,8 +118,25 @@
     return bytes.length + ";" + bytesToBase64(bytes);
   }
 
+  /** Decode just the first bytes of a "{len};{base64}" payload (magic check without a full decode). */
+  function payloadHead(payload) {
+    var start = payload.indexOf(";") + 1;
+    try {
+      var head = atob(payload.slice(start, start + 64));
+      var bytes = new Uint8Array(head.length);
+      for (var i = 0; i < head.length; i++) bytes[i] = head.charCodeAt(i) & 0xff;
+      return bytes;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function ensureDeobfuscatedPayload(payload) {
     if (!payload) return null;
+    // Fast path: already a clean desktop payload — avoid re-encoding megabytes.
+    if (/^\d+;/.test(payload) && isLikelyOpenTypeFontBytes(payloadHead(payload))) {
+      return payload;
+    }
 
     var normalized = payload;
     if (!/^\d+;/.test(payload)) {
@@ -204,10 +226,37 @@
     return set;
   }
 
+  /**
+   * Tell the Statiq host page which font files this editor really loaded. PDF
+   * export / print hand these to x2t: the paint stream references glyph ids of
+   * the exact face the editor used, so x2t must render with the same file or
+   * the text comes out garbled or missing.
+   */
+  function registerSessionFont(name, payload) {
+    var targets = [];
+    try {
+      if (window.parent && window.parent !== window) targets.push(window.parent);
+      if (window.top && targets.indexOf(window.top) === -1 && window.top !== window) targets.push(window.top);
+    } catch (e) {
+      /* cross-origin parent */
+    }
+    for (var i = 0; i < targets.length; i++) {
+      try {
+        if (typeof targets[i].__statiqRegisterSessionFont === "function") {
+          targets[i].__statiqRegisterSessionFont(String(name), payload);
+          return;
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  }
+
   function assignFontPayload(name, payload) {
     var normalized = ensureDeobfuscatedPayload(payload);
     if (!name || !normalized) return;
     fontStore()[name] = normalized;
+    registerSessionFont(name, normalized);
     try {
       window[name] = normalized;
     } catch (e) {
@@ -313,8 +362,21 @@
     }
   }
 
+  function prefersCjkFallbackPreload() {
+    var langs = [];
+    try {
+      langs = langs.concat(navigator.languages || [], navigator.language || "");
+      langs.push(new URLSearchParams(window.location.search).get("lang") || "");
+    } catch (e) {}
+    for (var i = 0; i < langs.length; i++) {
+      if (/^(ja|zh|ko)\b/i.test(String(langs[i] || ""))) return true;
+    }
+    return false;
+  }
+
   function preloadCriticalFontsAsync() {
-    var CJK_FALLBACK_IDS = ["081", "134", "217"];
+    // ~25 MB of CJK fallbacks: only warm them for CJK users (others load on demand).
+    var CJK_FALLBACK_IDS = prefersCjkFallbackPreload() ? ["081", "134", "217"] : [];
     var manifest = readManifest();
     var ids = CJK_FALLBACK_IDS.slice();
     if (manifest && manifest.files) {

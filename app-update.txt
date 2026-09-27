@@ -5,9 +5,14 @@
 # you want those devices to prompt. You can ship several times in one day.
 # Everything after the version line is shown as the changelog.
 
-5
+9
 
-Fixed EMF file crash, PDF loading
+Faster, more reliable file opening
 
-- Fixed a rare crash when opening a powerpoint file that uses .emf vector graphics
-- Fixed PDF loading cause I broke it
+- Fixed: opening a file sometimes dropped you back on Home instead of opening it
+- Files open much faster: the editor now loads while your file is being prepared, instead of one after the other
+- Large presentations are prepared up to 10× quicker before opening
+- The file converter warms up in the background on the Start screen
+- Editing stays smoother: drafts are saved in the background less often
+- Pictures pasted into Office as enhanced metafiles now show up
+- New setting: "Compress large photos when opening" for photo-heavy presentations
