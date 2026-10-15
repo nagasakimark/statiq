@@ -10,8 +10,6 @@
   "use strict";
 
   var MANIFEST_KEY = "statiq-custom-font-manifest";
-  /** Stock rows in fonts_thumbnail sprite / __fonts_infos before customs. */
-  var STOCK_FONT_ROWS = 144;
 
   function readManifest() {
     try {
@@ -55,7 +53,7 @@
     return names;
   }
 
-  function thumbnailIndexForFamily(family, fallback) {
+  function thumbnailIndexForFamily(family) {
     try {
       var families = window.AscFonts && window.AscFonts.g_font_infos;
       if (families) {
@@ -66,7 +64,7 @@
         }
       }
     } catch (e) {}
-    return fallback;
+    return -1; // the editor has not assigned a preview row: never guess
   }
 
   function stableFontId(family) {
@@ -107,11 +105,13 @@
     for (var i = 0; i < manifest.infos.length; i++) {
       var family = manifest.infos[i] && manifest.infos[i][0];
       if (!family || existing[family]) continue;
+      var imgidx = thumbnailIndexForFamily(family);
+      if (imgidx < 0) continue;
       existing[family] = true;
       toAdd.push({
         id: stableFontId(family),
         name: family,
-        imgidx: thumbnailIndexForFamily(family, STOCK_FONT_ROWS + i),
+        imgidx: imgidx,
         type: 1,
       });
     }

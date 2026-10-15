@@ -299,7 +299,7 @@
       var bytes = syncFetchObfuscatedBinary(urls[u]);
       if (!bytes || !bytes.length) continue;
 
-      deobfuscateFontBytes(bytes);
+      if (!isLikelyOpenTypeFontBytes(bytes)) deobfuscateFontBytes(bytes);
       if (!isLikelyOpenTypeFontBytes(bytes)) continue;
 
       var payload = toDesktopPayload(bytes);
@@ -335,7 +335,7 @@
         .then(function (buffer) {
           if (!buffer) return tryUrl(index + 1);
           var bytes = new Uint8Array(buffer);
-          deobfuscateFontBytes(bytes);
+          if (!isLikelyOpenTypeFontBytes(bytes)) deobfuscateFontBytes(bytes);
           if (!isLikelyOpenTypeFontBytes(bytes)) return tryUrl(index + 1);
           var payload = toDesktopPayload(bytes);
           assignFontPayload(name, payload);
@@ -558,12 +558,12 @@
             ctx.textBaseline = "middle";
             for (var i = 0; i < entries.length; i++) {
               if (!entries[i].family) continue;
-              ctx.font = Math.round(16 * cfg.r) + 'px "' + entries[i].family + '", sans-serif';
+              ctx.font = Math.round(20 * cfg.r) + 'px "' + entries[i].family + '", sans-serif';
               ctx.fillText(
                 entries[i].family,
-                Math.round(2 * cfg.r),
+                Math.round(18 * cfg.r),
                 (stockRows + entries[i].infoIndex) * rowH + Math.round(rowH / 2),
-                canvas.width - Math.round(4 * cfg.r)
+                canvas.width - Math.round(22 * cfg.r)
               );
             }
             window.__statiqFontsSprite = window.__statiqFontsSprite || {};
@@ -722,7 +722,7 @@
   };
   existing.getFontsSprite = existing.getFontsSprite || getFontsSprite;
   // Force ComboBoxFonts onto the PNG path so __statiqFontsSprite (extended with
-  // custom-font rows) is used. Stock .bin sprites only contain 144 rows.
+  // custom-font rows) is used. Stock .bin sprites only contain one row per stock family.
   existing.isSupportBinaryFontsSprite = false;
   existing.CreateEditorApi = existing.CreateEditorApi || noop;
   existing.SetDocumentName = existing.SetDocumentName || noop;

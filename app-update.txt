@@ -29,5 +29,5 @@ Interactive PowerPoint games now work like PowerPoint, plus much faster opening 
 - Fixed: click sounds and slide-transition sounds were lost when saving a PowerPoint; they are kept now and play in the slideshow
 - Fixed: transparent pictures with a shadow no longer show a dark box behind them
 - Cleaner screens: unused parts (collaboration, comments, review, protection, plugins, forms) are gone
-- Japanese fonts (Noto Sans JP / Serif JP) and Pook / Pook Lines are built in
+- Built-in Japanese fonts (Noto Sans JP / Serif JP) and a new set of "Pook" fonts: similar to New Horizon fonts but free to use
 - The offline copy is about half the size, so it takes much less storage
