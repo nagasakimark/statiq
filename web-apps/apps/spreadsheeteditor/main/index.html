@@ -1,16 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-        <link rel="preload" as="script" href="../../../vendor/requirejs/require.js" fetchpriority="high">
-    <link rel="preload" as="script" href="app.js" fetchpriority="high">
-    <link rel="preload" as="script" href="../../../../sdkjs/common/AllFonts.js" fetchpriority="high">
-    <link rel="preload" as="script" href="../../../../sdkjs/cell/sdk-all-min.js" fetchpriority="high">
-    <link rel="preload" as="style" href="resources/css/app.css">
-        <link rel="preload" as="script" href="../../../vendor/requirejs/require.js" fetchpriority="high">
-    <link rel="preload" as="script" href="app.js" fetchpriority="high">
-    <link rel="preload" as="script" href="../../../../sdkjs/common/AllFonts.js" fetchpriority="high">
-    <link rel="preload" as="script" href="../../../../sdkjs/cell/sdk-all-min.js" fetchpriority="high">
-    <link rel="preload" as="style" href="resources/css/app.css">
     <title>ONLYOFFICE Document Editor</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=IE8"/>
@@ -44,7 +34,7 @@
             --sk-border-radius-formula-field: 3px;
         }
 
-        .theme-night .loadmask {
+        .theme-night .loadmask, .theme-type-dark .loadmask {
             --sk-height-toolbar-controls: 84px; 
             --sk-layout-padding-toolbar: 0 10px;
             --sk-border-radius-toolbar: 8px;
@@ -84,6 +74,13 @@
             --sk-border-style-formula: none;
             --sk-gap-formula-field: 28px;
             --sk-border-radius-formula-field: 3px;
+        }
+
+        .theme-type-dark.content-theme-dark .loadmask {
+            --sk-canvas-content-background: #3a3a3a;
+            --sk-canvas-page-border: #616161;
+            --sk-canvas-cell-line: #616161;
+            --sk-canvas-cell-background: var(--background-pane);
         }
 
         .loadmask {
@@ -286,14 +283,14 @@
             width: 100%;
             height: 100%;
             display: inline-block;
-            background: linear-gradient(90deg, #d5d5d5 0px, rgba(223,223,223,0) 1px) 0 0,
-                        linear-gradient(rgba(223,223,223,0) 19px, #d5d5d5 20px) 0 0,
-                        linear-gradient( #f1f1f1 0px, #f1f1f1 20px) 0 0 repeat-x;
+            background: linear-gradient(90deg, var(--sk-canvas-cell-line, #d5d5d5) 0px, rgba(223,223,223,0) 1px) 0 0,
+                        linear-gradient(rgba(223,223,223,0) 19px, var(--sk-canvas-cell-line, #d5d5d5) 20px) 0 0,
+                        linear-gradient( var(--sk-canvas-cell-background, #f1f1f1) 0px, var(--sk-canvas-cell-background, #f1f1f1) 20px) 0 0 repeat-x;
             background-size: 80px 20px;
         }
 
         .loadmask > .placeholder > .columns:first-child {
-            background: linear-gradient(#f1f1f1 19px, #d5d5d5 20px) 0 0;
+            background: linear-gradient(var(--sk-canvas-cell-background, #f1f1f1) 19px, var(--sk-canvas-cell-line, #d5d5d5) 20px) 0 0;
             background-size: 20px 20px;
             width: 25px;
         }
@@ -526,13 +523,13 @@ var checkLocalStorage=function(){try{localStorage.setItem("test",1);localStorage
             (document.write('<script src="../../common/main/lib/util/fix-ie-compat.js"><\/script>'),
             document.write('<script src="../../../../sdkjs/vendor/string.js"><\/script>'));
     </script>
-    <script src="../../api/documents/api.js"></script>
     <script>(function(){if(window.__statiqShimBootstrapV26)return;window.__statiqShimBootstrapV26=true;window.__statiqSkipHelp=true;var p=location.pathname,i=p.indexOf("/web-apps/"),b=i>=0?p.slice(0,i):window.__STATIQ_BASE_PATH__||"";window.__STATIQ_BASE_PATH__=b;if(!window.__statiqNativeFetch&&window.fetch)window.__statiqNativeFetch=window.fetch.bind(window);})();</script>
     <script>(function(){var n=window.__statiqNativeFetch,w=window.fetch;if(!n||!w||w.__statiqLocaleGuard)return;window.fetch=function(i,o){var u=typeof i==="string"?i:i instanceof Request?i.url:"";if(typeof u==="string"&&/resources\/help\/[^?#"']+\/Contents\.json/i.test(u))return Promise.resolve({ok:!1,status:404});if(typeof u==="string"&&u.charAt(0)!=="/"&&!/^[a-z][a-z0-9+.-]*:/i.test(u))return n(i,o);return w.call(this,i,o);};window.fetch.__statiqLocaleGuard=true;})();</script>
     <script src="../../../../office-shims/asset-rewrite.js?v=27"></script>
     <script src="../../../../office-shims/document-server-shim.js?v=27"></script>
     <script src="../../../../office-shims/asc-desktop-fonts.js?v=27"></script>
     <script src="../../../../office-shims/custom-fonts-picker.js?v=27"></script>
+    <script src="../../api/documents/api.js"></script>
     <script src="../../../vendor/requirejs/require.js"></script>
     <script>
         isIEBrowser === true ? require(['ie/app']) : require(['app']);

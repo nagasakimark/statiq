@@ -5,14 +5,29 @@
 # you want those devices to prompt. You can ship several times in one day.
 # Everything after the version line is shown as the changelog.
 
-9
+10
 
-Faster, more reliable file opening
+Interactive PowerPoint games now work like PowerPoint, plus much faster opening and saving
 
-- Fixed: opening a file sometimes dropped you back on Home instead of opening it
-- Files open much faster: the editor now loads while your file is being prepared, instead of one after the other
-- Large presentations are prepared up to 10× quicker before opening
-- The file converter warms up in the background on the Start screen
-- Editing stays smoother: drafts are saved in the background less often
-- Pictures pasted into Office as enhanced metafiles now show up
-- New setting: "Compress large photos when opening" for photo-heavy presentations
+- Slideshows follow PowerPoint closely: animation triggers, click-to-reveal and click-to-hide buttons, hyperlinks and morph transitions behave the way they do in desktop PowerPoint
+- Fixed: shapes hidden by an exit animation could still be clicked or showed a hand cursor; the shape on top now blocks the ones underneath, like PowerPoint
+- Fixed: clicking a link only runs that shape's own animation, it no longer skips ahead or fast-forwards other effects
+- Fixed: "Last slide viewed" and "End show" links now work (and are kept when you save)
+- Fixed: clicking any part of a grouped button triggers the group's animation and link
+- Animated GIFs play smoothly, and slides with many animations redraw much faster
+- Insert Video and Audio now work in the browser version
+- Big presentations open about 2.5× faster (a 140 MB game deck: 6.7 s down to 2.5 s) thanks to a newer, leaner editor and smarter file reading
+- Reopening a file is even quicker (about 2 s)
+- Saving large presentations is up to 6× faster and uses far less memory (27 s down to 4 s)
+- Word documents open about twice as fast
+- The first slide shows up instantly while the rest of the file is still loading
+- Pictures and GIFs in slideshows replay faster, and the show uses less memory
+- Fixed: PDF export and printing could fail for documents with Japanese text or custom fonts such as Pook
+- Fixed: saving an edited PDF (rotated pages, notes) now keeps your changes
+- Fixed: Save as / Download could save the file twice
+- Save writes straight back to your file; "Save Copy As" always asks where to save (the duplicate "Download As" is gone)
+- Fixed: click sounds and slide-transition sounds were lost when saving a PowerPoint; they are kept now and play in the slideshow
+- Fixed: transparent pictures with a shadow no longer show a dark box behind them
+- Cleaner screens: unused parts (collaboration, comments, review, protection, plugins, forms) are gone
+- Japanese fonts (Noto Sans JP / Serif JP) and Pook / Pook Lines are built in
+- The offline copy is about half the size, so it takes much less storage

@@ -57,11 +57,11 @@
 
   function thumbnailIndexForFamily(family, fallback) {
     try {
-      var families = window.AscFonts && window.AscFonts.$4a;
+      var families = window.AscFonts && window.AscFonts.g_font_infos;
       if (families) {
         for (var fi = 0; fi < families.length; fi++) {
-          if (families[fi] && families[fi].za === family && typeof families[fi].QSh === "number") {
-            return families[fi].QSh;
+          if (families[fi] && families[fi].Name === family && typeof families[fi].Thumbnail === "number") {
+            return families[fi].Thumbnail;
           }
         }
       }

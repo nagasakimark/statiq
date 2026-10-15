@@ -1,12 +1,38 @@
 /*
- * Copyright (C) Ascensio System SIA 2012-2026. All rights reserved
+ * Copyright (C) Ascensio System SIA, 2009-2026
  *
- * https://www.onlyoffice.com/
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
  *
- * Version: 9.3.0 (build:138)
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
-
-(function(window,undefined){function internal_isLocal(){if(window.navigator&&window.navigator.userAgent.toLowerCase().indexOf("ascdesktopeditor")<0)return false;if(window.location&&window.location.protocol=="file:")return true;if(window.document&&window.document.currentScript&&0==window.document.currentScript.src.indexOf("file:///"))return true;return false}function locateFile(path){if(Module["locateFile"])return Module["locateFile"](path,scriptDirectory);return scriptDirectory+path}function updateMemoryViews(){var b=
+ (function(window,undefined){function internal_isLocal(){if(window.navigator&&window.navigator.userAgent.toLowerCase().indexOf("ascdesktopeditor")<0)return false;if(window.location&&window.location.protocol=="file:")return true;if(window.document&&window.document.currentScript&&0==window.document.currentScript.src.indexOf("file:///"))return true;return false}function locateFile(path){if(Module["locateFile"])return Module["locateFile"](path,scriptDirectory);return scriptDirectory+path}function updateMemoryViews(){var b=
 wasmMemory.buffer;Module["HEAP8"]=HEAP8=new Int8Array(b);Module["HEAP16"]=HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);Module["HEAPU16"]=HEAPU16=new Uint16Array(b);Module["HEAP32"]=HEAP32=new Int32Array(b);Module["HEAPU32"]=HEAPU32=new Uint32Array(b);Module["HEAPF32"]=HEAPF32=new Float32Array(b);Module["HEAPF64"]=HEAPF64=new Float64Array(b)}function preRun(){if(Module["preRun"]){if(typeof Module["preRun"]=="function")Module["preRun"]=[Module["preRun"]];for(;Module["preRun"].length;)addOnPreRun(Module["preRun"].shift())}callRuntimeCallbacks(__ATPRERUN__)}
 function initRuntime(){runtimeInitialized=true;callRuntimeCallbacks(__ATINIT__)}function postRun(){if(Module["postRun"]){if(typeof Module["postRun"]=="function")Module["postRun"]=[Module["postRun"]];for(;Module["postRun"].length;)addOnPostRun(Module["postRun"].shift())}callRuntimeCallbacks(__ATPOSTRUN__)}function addOnPreRun(cb){__ATPRERUN__.unshift(cb)}function addOnInit(cb){__ATINIT__.unshift(cb)}function addOnPostRun(cb){__ATPOSTRUN__.unshift(cb)}function addRunDependency(id){runDependencies++;
 if(Module["monitorRunDependencies"])Module["monitorRunDependencies"](runDependencies)}function removeRunDependency(id){runDependencies--;if(Module["monitorRunDependencies"])Module["monitorRunDependencies"](runDependencies);if(runDependencies==0){if(runDependencyWatcher!==null){clearInterval(runDependencyWatcher);runDependencyWatcher=null}if(dependenciesFulfilled){var callback=dependenciesFulfilled;dependenciesFulfilled=null;callback()}}}function abort(what){if(Module["onAbort"])Module["onAbort"](what);

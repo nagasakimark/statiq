@@ -1,12 +1,38 @@
 /*
- * Copyright (C) Ascensio System SIA 2012-2026. All rights reserved
+ * Copyright (C) Ascensio System SIA, 2009-2026
  *
- * https://www.onlyoffice.com/
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
  *
- * Version: 9.3.0 (build:138)
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
-
-(function(window,undefined){function CBinaryReader(data,start,size){this.data=data;this.pos=start;this.limit=start+size}function CBinaryWriter(){this.size=1E5;this.dataSize=0;this.buffer=new Uint8Array(this.size)}function CFile(){this.nativeFile=0;this.stream=-1;this.stream_size=0;this.type=-1;this.pages=[];this.info=null;this._isNeedPassword=false;this.fontPageIndex=-1;this.fontPageUpdateType=UpdateFontsSource.Undefined;this.fontStreams={};this.scannedImages={}}function CNativePointer(){this.ptr=
+ (function(window,undefined){function CBinaryReader(data,start,size){this.data=data;this.pos=start;this.limit=start+size}function CBinaryWriter(){this.size=1E5;this.dataSize=0;this.buffer=new Uint8Array(this.size)}function CFile(){this.nativeFile=0;this.stream=-1;this.stream_size=0;this.type=-1;this.pages=[];this.info=null;this._isNeedPassword=false;this.fontPageIndex=-1;this.fontPageUpdateType=UpdateFontsSource.Undefined;this.fontStreams={};this.scannedImages={}}function CNativePointer(){this.ptr=
 null}function readAction(reader,rec,readDoubleFunc,readStringFunc){var SType=reader.readByte();rec["S"]=SType;if(SType==14)rec["JS"]=readStringFunc.call(reader);else if(SType==1){rec["page"]=reader.readInt();rec["kind"]=reader.readByte();switch(rec["kind"]){case 0:case 2:case 3:case 6:case 7:{var nFlag=reader.readInt();if(nFlag&1<<0)rec["left"]=readDoubleFunc.call(reader);if(nFlag&1<<1)rec["top"]=readDoubleFunc.call(reader);if(nFlag&1<<2)rec["zoom"]=readDoubleFunc.call(reader);break}case 4:{rec["left"]=
 readDoubleFunc.call(reader);rec["top"]=readDoubleFunc.call(reader);rec["right"]=readDoubleFunc.call(reader);rec["bottom"]=readDoubleFunc.call(reader);break}case 1:case 5:default:break}}else if(SType==10)rec["N"]=readStringFunc.call(reader);else if(SType==6)rec["URI"]=readStringFunc.call(reader);else if(SType==9){rec["H"]=reader.readByte();var m=reader.readInt();rec["T"]=[];var j=0;for(;j<m;++j)rec["T"].push(readStringFunc.call(reader))}else if(SType==12){rec["Flags"]=reader.readInt();var m$jscomp$0=
 reader.readInt();rec["Fields"]=[];var j$jscomp$0=0;for(;j$jscomp$0<m$jscomp$0;++j$jscomp$0)rec["Fields"].push(readStringFunc.call(reader))}var NextAction=reader.readByte();if(NextAction){rec["Next"]={};readAction(reader,rec["Next"],readDoubleFunc,readStringFunc)}}function readAnnot(reader,rec,readDoubleFunc,readDouble2Func,readStringFunc,isRead){isRead=isRead===void 0?false:isRead;rec["AP"]={};rec["AP"]["i"]=reader.readInt();rec["annotflag"]=reader.readInt();var bHidden=rec["annotflag"]>>1&1;var bPrint=

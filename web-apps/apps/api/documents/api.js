@@ -1,11 +1,37 @@
-/*!
- * Copyright (c) Ascensio System SIA 2026. All rights reserved
+/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
  *
- * http://www.onlyoffice.com 
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
  *
- * Version: 9.3.0 (build:138)
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
-
 
 ;(function(DocsAPI, window, document, undefined) {
 
@@ -83,8 +109,6 @@
                 callbackUrl: <url for connection between sdk and portal>,
                 mergeFolderUrl: 'folder for saving merged file', // must be deprecated, use saveAsUrl instead
                 saveAsUrl: 'folder for saving files'
-                licenseUrl: <url for license>,
-                customerId: <customer id>,
                 region: <regional settings> // can be 'en-us' or lang code
 
                 user: {
@@ -241,7 +265,6 @@
                     statusBar: true, // must be deprecated. use layout.statusBar instead
                     autosave: true,
                     forcesave: false,
-                    commentAuthorOnly: false, // must be deprecated. use permissions.editCommentAuthorOnly and permissions.deleteCommentAuthorOnly instead
                     showReviewChanges: false, // must be deprecated. use customization.review.showReviewChanges instead
                     help: true,
                     compactHeader: false,
@@ -355,8 +378,6 @@
                 isForm: 'pdf form' / false/true
             },
             editorConfig: {
-                licenseUrl: <url for license>,
-                customerId: <customer id>,
                 autostart: 'document',    // action for app's autostart. for presentations default value is 'player'
                 embedded: {
                      embedUrl: 'url',
@@ -380,7 +401,7 @@
 
     DocsAPI.DocEditor = function(placeholderId, config) {
         var _self = this,
-            _config = config || {};
+            _config = config ? Object.assign ? Object.assign({}, config) : config : {};
 
         extend(_config, DocsAPI.DocEditor.defaultConfig);
         _config.editorConfig.canUseHistory = _config.events && !!_config.events.onRequestHistory;
@@ -406,17 +427,13 @@
         _config.editorConfig.canRequestSelectSpreadsheet = _config.events && !!_config.events.onRequestSelectSpreadsheet;
         _config.editorConfig.canRequestReferenceSource = _config.events && !!_config.events.onRequestReferenceSource;
         _config.editorConfig.canSaveDocumentToBinary = _config.events && !!_config.events.onSaveDocument;
-        _config.editorConfig.canStartFilling = _config.events && !!_config.events.onRequestStartFilling;
+        _config.editorConfig.canRequestStartFilling = _config.events && !!_config.events.onRequestStartFilling;
+        _config.editorConfig.canStartFilling = _config.events && !!_config.events.onStartFilling;
         _config.editorConfig.canRequestRefreshFile = _config.events && !!_config.events.onRequestRefreshFile;
         _config.editorConfig.canUpdateVersion = _config.events && !!_config.events.onOutdatedVersion;
         _config.editorConfig.canRequestFillingStatus = _config.events && !!_config.events.onRequestFillingStatus;
         _config.frameEditorId = placeholderId;
         _config.parentOrigin = window.location.origin;
-
-        (function(){function d(){this.frames=[];this.x=window.scrollX;this.y=window.scrollY;this.lockCounter=0;window.addEventListener("scroll",this.onScroll.bind(this),!0)}function b(a){this.frame=a;window.AscEmbed.AscEmbedGlobalScroller||(window.AscEmbed.AscEmbedGlobalScroller=new d);window.AscEmbed.AscEmbedGlobalScroller.push(this.frame);window.addEventListener("blur",this.onBlur.bind(this),!1);window.addEventListener("pointermove",this.onMove.bind(this),!1);window.addEventListener("wheel",this.onMove.bind(this),
-!1);this.frame.addEventListener("pointerover",this.onOver.bind(this),!1);this.frame.addEventListener("pointerleave",this.onLeave.bind(this),!1)}window.AscEmbed=window.AscEmbed||{};d.prototype.onScroll=function(){let a=!1;0!==this.lockCounter&&(a=!0);if(!a)for(let c=0,e=this.frames.length;c<e;c++)if(document.activeElement===this.frames[c]){a=!0;this.lockWithTimeout(500);break}a?window.scrollTo(this.x,this.y):(this.x=window.scrollX,this.y=window.scrollY)};d.prototype.push=function(a){this.frames.push(a)};
-d.prototype.lockWithTimeout=function(a){this.lockCounter++;var c=this;setTimeout(function(){c.lockCounter--},a)};b.prototype.onBlur=function(){document.activeElement===this.frame&&window.AscEmbed.AscEmbedGlobalScroller.lockWithTimeout(500)};b.prototype.onOver=function(){};b.prototype.onLeave=function(){window.AscEmbed.AscEmbedGlobalScroller.lockWithTimeout(100);this.frame.blur()};b.prototype.onMove=function(){document.activeElement===this.frame&&(window.AscEmbed.AscEmbedGlobalScroller.lockWithTimeout(100),
-this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.workers=window.AscEmbed.workers||[];a=new b(a);window.AscEmbed.workers.push(a);return a}})();
 
         var onMouseUp = function (evt) {
             _processMouse(evt);
@@ -488,8 +505,11 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
 
         var _checkConfigParams = function() {
             if (_config.document) {
-                if (!_config.document.url || ((typeof _config.document.fileType !== 'string' || _config.document.fileType=='') &&
-                                              (typeof _config.documentType !== 'string' || _config.documentType==''))) {
+                if (!_config.document.url ||
+                    ((typeof _config.document.fileType !== 'string' || _config.document.fileType=='') &&
+                                              (typeof _config.documentType !== 'string' || _config.documentType=='')) ||
+                    (!_config.document.key || typeof _config.document.key !== 'string'))
+                {
                     window.alert("One or more required parameter for the config object is not set");
                     return false;
                 }
@@ -542,13 +562,6 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
 
                 if (!_config.document.title || _config.document.title=='')
                     _config.document.title = 'Unnamed.' + _config.document.fileType;
-
-                if (!_config.document.key) {
-                    _config.document.key = 'xxxxxxxxxxxxxxxxxxxx'.replace(/[x]/g, function (c) {var r = Math.random() * 16 | 0; return r.toString(16);});
-                } else if (typeof _config.document.key !== 'string') {
-                    window.alert("The \"document.key\" parameter for the config object must be string. Please correct it.");
-                    return false;
-                }
 
                 if (_config.editorConfig.user && _config.editorConfig.user.id && (typeof _config.editorConfig.user.id == 'number')) {
                     _config.editorConfig.user.id = _config.editorConfig.user.id.toString();
@@ -623,7 +636,12 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
             if (iframe) {
                 _msgDispatcher && _msgDispatcher.unbindEvents();
                 _detachMouseEvents();
+                _msgDispatcher = null;
+                _config = null;
+
+                iframe.src = 'about:blank';
                 iframe.parentNode && iframe.parentNode.replaceChild(target, iframe);
+                iframe = null;
             }
         };
 
@@ -899,10 +917,7 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
             });
         };
 
-        function _createEmbedWorker() { return AscEmbed.initWorker(iframe); }
-
         return {
-            createEmbedWorker   : _createEmbedWorker,
             showMessage         : _showMessage,
             processRightsChange : _processRightsChange,
             denyEditingRights   : _denyEditingRights,
@@ -953,7 +968,7 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
     };
 
     DocsAPI.DocEditor.version = function() {
-        return '9.3.0';
+        return '9.4.0';
     };
 
     DocsAPI.DocEditor.warmUp = function(id) {
@@ -1154,8 +1169,7 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
                 if (type && typeof type[6] === 'string') appType = 'diagram';
             }
         }
-        // Statiq Office: chart OLE editing always uses the internal spreadsheet
-        // editor, even when the host document is a presentation.
+        // Statiq Office: chart OLE editing always uses the internal spreadsheet editor.
         if (config.editorConfig && config.editorConfig.mode === 'editole')
             appType = 'cell';
         if (!(config.editorConfig && config.editorConfig.shardkey && config.document && config.editorConfig.shardkey!==config.document.key))
@@ -1181,7 +1195,7 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
     }
 
     function getAppParameters(config) {
-        var params = "?_dc=9.3.0-138";
+        var params = "?_dc=0";
 
         if (config.editorConfig && config.editorConfig.lang)
             params += "&lang=" + config.editorConfig.lang;
@@ -1286,7 +1300,7 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
         iframe.allowFullscreen = true;
         iframe.setAttribute("allowfullscreen",""); // for IE11
         iframe.setAttribute("onmousewheel",""); // for Safari on Mac
-        iframe.setAttribute("allow", "autoplay; camera; microphone; display-capture; clipboard-read; clipboard-write;");
+        iframe.setAttribute("allow", "autoplay; camera; microphone; display-capture; clipboard-write;");
 
 		if (config.type == "mobile")
 		{
@@ -1320,10 +1334,8 @@ this.frame.blur())};window.AscEmbed.initWorker=function(a){window.AscEmbed.worke
     }
 
     function extendAppPath(config,  path) {
-        if (typeof window.__STATIQ_BASE_PATH__ === "string")
-            return path;
         if ( !config.isLocalFile ) {
-            const ver = '/9.3.0-e6f348e8595590fa860a3e46380ca2bf';
+            const ver = '/9.4.0-{{HASH_POSTFIX}}';
             if ( ver.lastIndexOf('{{') < 0 && path.indexOf(ver) < 0 ) {
                 const pos = path.indexOf('/web-apps/app');
                 if ( pos > 0 )

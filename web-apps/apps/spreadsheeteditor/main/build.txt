@@ -1,0 +1,9 @@
+
+resources/help/images/sprite.css
+----------------
+resources/help/images/../../../../../common/main/resources/help/images/symbols.css
+resources/help/images/sprite.css
+
+resources/help/tr/editor.css
+----------------
+resources/help/tr/editor.css

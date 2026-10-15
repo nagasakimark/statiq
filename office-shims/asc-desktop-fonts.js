@@ -662,6 +662,64 @@
     return true;
   };
   existing.LoadFontBase64 = loadFontBase64;
+
+  // Fonts as raw bytes (sdkjs patch in common/Drawings/Externals.js). The host page's
+  // registry (lib/fonts/font-bytes.ts) holds prefetched stock files and custom fonts;
+  // returning null lets the editor fetch the file asynchronously, in parallel.
+  function fontBytesRegistry() {
+    try {
+      var reg = window.parent && window.parent.__statiqFontBytes;
+      if (reg && typeof reg.get === "function") return reg;
+    } catch (e) {
+      /* cross-origin parent */
+    }
+    if (!window.__statiqLocalFontBytes) {
+      var map = Object.create(null);
+      window.__statiqLocalFontBytes = {
+        get: function (id) { return map[id]; },
+        set: function (id, bytes) { map[id] = bytes; },
+      };
+    }
+    return window.__statiqLocalFontBytes;
+  }
+  function payloadToBytes(payload) {
+    var normalized = ensureDeobfuscatedPayload(payload);
+    if (!normalized) return null;
+    var base64 = /^\d+;/.test(normalized) ? normalized.slice(normalized.indexOf(";") + 1) : normalized;
+    try {
+      var binary = atob(base64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i) & 0xff;
+      return bytes;
+    } catch (e) {
+      return null;
+    }
+  }
+  existing.LoadFontBytes = function (name) {
+    if (!name) return null;
+    name = String(name);
+    var reg = fontBytesRegistry();
+    var hit = reg.get(name);
+    if (hit) return hit;
+    // Custom fonts live only in this browser (seed, manifest or the host page).
+    var payload = (readSeedMap() || {})[name] || (readManifestBinaries() || {})[name] || readParentCustomFont(name);
+    if (!payload) payload = loadFontBase64(name); // custom font, or a synchronous read of the file
+    if (!payload) return null;
+    var bytes = payloadToBytes(payload);
+    if (bytes) reg.set(name, bytes);
+    return bytes;
+  };
+  existing.OnFontBytesLoaded = function (name, bytes) {
+    if (name && bytes) fontBytesRegistry().set(String(name), bytes);
+  };
+  existing.PrefetchFontFiles = function (ids, done) {
+    var reg = fontBytesRegistry();
+    if (typeof reg.prefetch !== "function") {
+      done();
+      return;
+    }
+    reg.prefetch(Array.prototype.slice.call(ids || [])).then(done, done);
+  };
   existing.getFontsSprite = existing.getFontsSprite || getFontsSprite;
   // Force ComboBoxFonts onto the PNG path so __statiqFontsSprite (extended with
   // custom-font rows) is used. Stock .bin sprites only contain 144 rows.
